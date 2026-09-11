@@ -22,39 +22,46 @@ function buildImagePrompt({ styleFragment, characterDescription, pageImagePrompt
  * @param {string} styleKey - one of STYLE_PRESETS keys, e.g. "comic_color", "comic_bw", "storybook"
  * @returns {Promise<Array<{pageNumber:number, text:string, image:any|null, imageError:string|null}>>}
  */
+async function generateSinglePageImage(page, characterDescription, style) {
+  const fullPrompt = buildImagePrompt({
+    styleFragment: style.promptFragment,
+    characterDescription,
+    pageImagePrompt: page.imagePrompt,
+  });
+
+  try {
+    const cloudflareResult = await generateImageCloudflare({ prompt: fullPrompt });
+    if (cloudflareResult && cloudflareResult.base64) {
+      return {
+        ...page,
+        image: `data:image/jpeg;base64,${cloudflareResult.base64}`,
+        imageError: null,
+      };
+    }
+  } catch (cfErr) {
+    console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber} (${cfErr.message}). Using Pollinations AI fallback...`);
+  }
+
+  // Fallback to Pollinations AI image generation service
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=512&height=512&nologo=true`;
+  return {
+    ...page,
+    image: pollinationsUrl,
+    imageError: null,
+  };
+}
+
+/**
+ * Illustrates a whole book using Cloudflare Workers AI with Pollinations AI fallback.
+ */
 async function illustrateBook(pages, characterDescription, bookTitle, styleKey) {
   const style = resolveStyle(styleKey);
 
   const results = await mapWithConcurrency(pages, config.imageConcurrency, (page) =>
-    generateImageCloudflare({
-      prompt: buildImagePrompt({
-        styleFragment: style.promptFragment,
-        characterDescription,
-        pageImagePrompt: page.imagePrompt,
-      }),
-    })
+    generateSinglePageImage(page, characterDescription, style)
   );
 
-  return pages.map((page, i) => {
-    const result = results[i];
-
-    // Check if a valid response came back from Cloudflare
-    if (result && result.success !== false) {
-      return { 
-        ...page, 
-        image: result, // 👈 Passes the raw Cloudflare response to your route handler
-        imageError: null 
-      };
-    }
-
-    // Capture errors cleanly if Cloudflare failed
-    const errorMsg = result?.errors?.[0]?.message || 'Image generation failed';
-    return { 
-      ...page, 
-      image: null, 
-      imageError: errorMsg 
-    };
-  });
+  return results;
 }
 
 module.exports = { illustrateBook };

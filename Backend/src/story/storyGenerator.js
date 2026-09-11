@@ -63,26 +63,71 @@ Return only the structured story data.`;
 }
 
 /**
- * Generates the full story (all pages) in a single Gemini call.
+ * Fallback story generator for when Gemini API hits quota limits (429) or is unavailable.
+ * Guarantees that story creation NEVER fails for the user.
+ */
+function generateCreativeFallbackStory(userIdea, pageCount = 4) {
+  const cleanIdea = userIdea.trim().replace(/[^\w\s]/gi, '');
+  const words = cleanIdea.split(/\s+/).filter(Boolean);
+  const titleCore = words.slice(0, 5).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  const title = titleCore ? `The Tale of ${titleCore}` : 'The Journey Beyond the Stars';
+
+  const characterDescription = 'A spirited adventurer with messy hazel hair, wearing a teal windbreaker jacket, a silver star compass necklace, and sturdy leather boots';
+
+  const pages = [];
+  const total = Math.max(3, Math.min(12, pageCount));
+
+  for (let i = 1; i <= total; i++) {
+    let text = '';
+    let imagePrompt = '';
+
+    if (i === 1) {
+      text = `The adventure opened mid-stride into a world shaped by visions of ${userIdea}. Cool wind brushed against the horizon, carrying static and distant music. Every step forward marked the end of fear and the start of something extraordinary.`;
+      imagePrompt = `Opening scene of an epic journey inspired by ${userIdea}, standing at a breathtaking cliff overlook, cinematic wide angle, dramatic atmospheric sky.`;
+    } else if (i === total) {
+      text = `Golden sunlight bathed the landscape as final victory took hold. The challenge of ${userIdea} was met with quiet brilliance, transforming the path ahead into a bright, endless meadow. The journey was complete.`;
+      imagePrompt = `Triumphant resolution scene, golden hour sunlight, peaceful majestic landscape, sense of quiet wonder and accomplishment.`;
+    } else if (i === Math.floor(total / 2)) {
+      text = `Shadows stretched across the ancient stone archway as a sudden turn shifted everything. Standing at the central pulse of ${userIdea}, a single decisive choice had to be made. There was no returning to the way things were.`;
+      imagePrompt = `Dramatic turning point scene, ancient architectural ruins, mysterious glowing light sources, high contrast cinematic lighting.`;
+    } else {
+      text = `Pressing deeper into the heart of ${userIdea}, hidden details began to glow under the twilight. Each passing moment unveiled another layer of the secret, building toward an unstoppable climax.`;
+      imagePrompt = `Exploring a mysterious vibrant setting, ethereal ambient glow, intricate environmental details, sense of curiosity and excitement.`;
+    }
+
+    pages.push({
+      pageNumber: i,
+      text,
+      imagePrompt,
+    });
+  }
+
+  return {
+    title,
+    characterDescription,
+    pages,
+  };
+}
+
+/**
+ * Generates the full story (all pages) via Gemini call with seamless fallback.
  * Returns { title, characterDescription, pages: [{pageNumber, text, imagePrompt}] }
  */
 async function generateStory(userIdea, pageCount) {
-  const prompt = buildPrompt(userIdea, pageCount);
-
-  const raw = await generateText({ prompt, responseSchema: STORY_SCHEMA });
-
-  let story;
   try {
-    story = JSON.parse(raw);
+    const prompt = buildPrompt(userIdea, pageCount);
+    const raw = await generateText({ prompt, responseSchema: STORY_SCHEMA });
+    const story = JSON.parse(raw);
+
+    if (Array.isArray(story.pages) && story.pages.length > 0) {
+      console.log(`[storyGenerator] Gemini generated story: "${story.title}" (${story.pages.length} pages)`);
+      return story;
+    }
   } catch (err) {
-    throw new Error('Failed to parse story JSON from Gemini: ' + raw);
+    console.warn(`[storyGenerator] Gemini API unavailable (${err.message}). Using Creative Story Engine fallback.`);
   }
 
-  if (!Array.isArray(story.pages) || story.pages.length === 0) {
-    throw new Error('Story generation returned no pages.');
-  }
-
-  return story;
+  return generateCreativeFallbackStory(userIdea, pageCount);
 }
 
 module.exports = { generateStory };

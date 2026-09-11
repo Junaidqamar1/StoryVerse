@@ -36,15 +36,19 @@ if (res.ok && data.success && data.result?.image) {
   return data.result.image;
 }
 
-    const isRetryable = res.status === 429 || res.status >= 500;
-    if (isRetryable && attempt < retries) {
-      const waitMs = 1500 * Math.pow(2, attempt);
-      console.warn(`  Cloudflare AI error, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
-      await new Promise((r) => setTimeout(r, waitMs));
-      continue;
-    }
+if (res.status === 429) {
+  throw new Error(`Cloudflare AI quota exhausted (429): ${JSON.stringify(data.errors || data)}`);
+}
 
-    throw new Error(`Cloudflare Workers AI error (${res.status}): ${JSON.stringify(data.errors || data)}`);
+const isRetryable = res.status >= 500;
+if (isRetryable && attempt < retries) {
+  const waitMs = 1500 * Math.pow(2, attempt);
+  console.warn(`  Cloudflare AI error, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
+  await new Promise((r) => setTimeout(r, waitMs));
+  continue;
+}
+
+throw new Error(`Cloudflare Workers AI error (${res.status}): ${JSON.stringify(data.errors || data)}`);
   }
 }
 

@@ -14,12 +14,10 @@ async function callGeminiWithFallback(body, { retries = 4 } = {}) {
     );
   }
 
-  // Model fallback candidate list in priority order
+  // Active supported Gemini model
   const candidateModels = [
-    config.textModel && !config.textModel.includes('3.6') ? config.textModel : 'gemini-2.5-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-pro',
+    config.textModel || 'gemini-3.6-flash',
+    'gemini-3.6-flash',
   ];
 
   let lastError;
@@ -38,9 +36,13 @@ async function callGeminiWithFallback(body, { retries = 4 } = {}) {
 
         if (!res.ok) {
           const errText = await res.text();
-          // Rate limit or high demand - retry with exponential backoff
+          // If it's a quota / resource exhausted error, fail fast without 30s delay
+          if (res.status === 429 && (errText.includes('RESOURCE_EXHAUSTED') || errText.includes('Quota exceeded') || errText.includes('quota'))) {
+            throw new Error(`Gemini API Quota Exceeded (429 ${model}): ${errText}`);
+          }
+          // Rate limit or high demand - retry with backoff
           if ((res.status === 429 || res.status === 503 || res.status === 500) && attempt < retries) {
-            const waitMs = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
+            const waitMs = 1500 * Math.pow(2, attempt);
             console.warn(`  Gemini ${res.status} on ${model}, retrying in ${waitMs}ms...`);
             await new Promise((r) => setTimeout(r, waitMs));
             continue;
@@ -57,8 +59,8 @@ async function callGeminiWithFallback(body, { retries = 4 } = {}) {
       } catch (err) {
         lastError = err;
         console.warn(`[Gemini] Model ${model} failed: ${err.message}`);
-        // If it's a 404 or 400 (invalid model name), break inner loop to try next fallback model immediately
-        if (err.message.includes('404') || err.message.includes('400')) {
+        // If it's a 404, 400, or 429 quota exhausted error, break inner loop immediately
+        if (err.message.includes('404') || err.message.includes('400') || err.message.includes('Quota Exceeded') || err.message.includes('RESOURCE_EXHAUSTED')) {
           break;
         }
       }
