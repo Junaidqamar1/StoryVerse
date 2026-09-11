@@ -1,4 +1,4 @@
-const { generateText } = require('./geminiClient');
+﻿const { generateText } = require('./geminiClient');
 
 // Forces Gemini to return exactly this shape - no parsing guesswork.
 const STORY_SCHEMA = {
@@ -51,7 +51,7 @@ MASTER STORYTELLING CRAFT RULES:
 3. SENTENCE DYNAMICS: Alternate between short, heart-pounding beats and poetic, sweeping prose.
 4. CHARACTER CONSISTENCY: Invent ONE visually iconic main character. In "characterDescription", provide a fixed, concrete physical description in English (exact clothing, hair color/style, eye color, signature accessories, age/expression) that will be used across every page image.
 5. PAGE IMAGE PROMPT: For each page, write a standalone cinematic image prompt in English detailing camera angle (e.g. dramatic low-angle shot, cinematic wide lens), lighting (e.g. volumetric golden hour, bioluminescent glow), action, environment, and mood.
-6. SATISFYING CLIMAX & ENDING: Build a cohesive 3-act narrative arc across all ${pageCount} pages with an unforgettable resolution beat.
+6. FINAL PAGE RULE: The final page must follow every rule above just as strictly as page 1. Do not summarize the story's theme or moral. Do not use abstract words like triumph, courage, legend, legacy, victory, or wonder to describe the outcome. End on one last concrete, specific, sensory image or action instead - something the reader can picture, not a feeling being named.
 
 FORMAT PER PAGE:
 - "pageNumber": Integer (1 to ${pageCount})
@@ -63,7 +63,7 @@ Return ONLY valid JSON matching the schema.`;
 
 /**
  * Fallback story generator for when Gemini API hits quota limits (429) or is unavailable.
- * Delivers cinematic, multi-sentence stories customized to the user's idea in 8 languages.
+ * Delivers cinematic, multi-sentence stories customized to the user's idea in 8+ languages.
  */
 function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'English') {
   const cleanIdea = userIdea.trim();
@@ -111,21 +111,21 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
       imagePrompt = `Cinematic wide-angle opening shot, standing at an epic mountain ridge overlooking a breathtaking fantasy landscape inspired by ${cleanIdea}, golden atmospheric lighting, volumetric clouds, dramatic composition.`;
     } else if (i === total) {
       if (language === 'Spanish') {
-        text = `Una luz radiante iluminó el horizonte cuando el misterio de ${cleanIdea} se resolvió triunfalmente. El coraje transformó los momentos de duda en una victoria imborrable. La calma volvió, dejando un legado eterno.`;
+        text = `Al caer la noche sobre ${cleanIdea}, la linterna dorada descansó sobre la repisa de madera. Una suave brisa fresca cruzó la ventana abierta, silbando una melodía tranquila mientras las estrellas brillaban sobre los techos dorados.`;
       } else if (language === 'French') {
-        text = `Une lumière radieuse a illuminé l'horizon lorsque le mystère de ${cleanIdea} a trouvé sa réponse victorieuse. Le courage a métamorphosé chaque doute en un chef-d'œuvre de liberté. La paix est revenue, gravée pour toujours.`;
+        text = `Alors que la nuit tombait sur ${cleanIdea}, la lanterne dorée s'est posée sur le rebord en bois. Une brise fraîche traversait la fenêtre ouverte, fredonnant une douce chanson tandis que les étoiles brillaient sur le toit.`;
       } else if (language === 'German') {
-        text = `Ein strahlendes Licht erhellte den Horizont, als das Geheimnis von ${cleanIdea} vollendet wurde. Mut verwandelte alle Zweifel in einen unvergesslichen Triumph. Stille kehrte ein und hinterliess eine ewige Geschichte.`;
+        text = `Als die Nacht über ${cleanIdea} hereinbrach, ruhte die Laterne auf dem hölzernen Fensterbrett. Eine kühle Brise strich durch das offene Fenster und die Sterne leuchteten leise über den Dächern.`;
       } else if (language === 'Hindi') {
-        text = `एक सुनहरी किरण ने पूरे परिदृश्य को भर दिया और ${cleanIdea} का महागाथा सफल हुआ। हर संदेह और डर एक महान विजय में बदल गया। अब चारों ओर शांति और खुशी का उजाला था।`;
+        text = `${cleanIdea} की रात शांत पड़ गई और जलता हुआ दिया लकड़ी की चौखट पर टिक गया। ठंडी हवा खुली खिड़की से गुज़री और आसमान में चमकते तारे धीरे-धीरे झिलमिलाने लगे।`;
       } else if (language === 'Bengali') {
-        text = `এক পরম আলোর উদ্ভাসে চারদিক আলোকিত হয়ে উঠল যখন ${cleanIdea}-এর সমস্ত রহস্য এক স্মরণীয় বিজয়ে পরিণত হলো। সাহস এবং বিশ্বাস মিলিয়ে এক চিরন্তন জয়ের ইতিহাস তৈরি হলো।`;
+        text = `${cleanIdea}-এর আকাশ শান্ত রাতে ঢেকে গেল এবং জ্বলন্ত লণ্ঠনটি কাঠের জানালায় শান্ত হয়ে বসে রইল। খোলা জানালা দিয়ে ঠাণ্ডা বাতাস বয়ে গেল এবং তারারা ধীরে ধীরে জ্বলতে লাগল।`;
       } else if (language === 'Japanese') {
-        text = `眩い光が地平線を包み込み、${cleanIdea}の試練は見事に乗り越えられました。勇気はすべての迷いを消し去り、永遠の勝利をもたらしました。平和で美しい世界が広上がっています。`;
+        text = `${cleanIdea}に静かな夜が訪れ、星明かりのランタンが木製の窓辺に置かれました。心地よい涼風が吹き抜け、満天の星々が静かに輝いていました。`;
       } else {
-        text = `A radiant golden glow bathed the valley as the central mystery of ${cleanIdea} came to a triumphant resolution. True courage had turned uncertainty into a legendary triumph. Quiet wonder returned, sealing a legacy that would echo through ages.`;
+        text = `As night settled softly over ${cleanIdea}, the glowing lantern rested upon the polished wooden windowsill. A cool breeze drifted through the open frame, carrying the scent of pine while bright white stars sparkled quietly across the sky.`;
       }
-      imagePrompt = `Majestic triumphant climax, golden hour sunlight streaming through crystal structures, sense of awe, emotional resolution, masterpiece 8k render, octane render style.`;
+      imagePrompt = `Atmospheric peaceful night scene, a glowing lantern sitting on a wooden windowsill, cool blue moonlight, twinkling starlight sky, cozy warm indoor glow.`;
     } else if (i === Math.floor(total / 2)) {
       if (language === 'Spanish') {
         text = `En el centro de las sombras, un descubrimiento insospechado sobre ${cleanIdea} lo cambió todo. El camino se dividió en dos, exigiendo una elección Audaz e irreversible. Nadie podía echarse atrás ahora.`;
@@ -136,7 +136,7 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
       } else if (language === 'Hindi') {
         text = `गहरे सायों के बीच, ${cleanIdea} का एक बड़ा सच सामने आया जिसने सब कुछ बदल दिया। राह दो हिस्सों में बंट गई और एक निडर फैसला लेना पड़ा।`;
       } else if (language === 'Bengali') {
-        text = `রহস্যের অতল গভীরে ${cleanIdea}-এর একটি চমকপ্রদ সত্য প্রকাশ পেল যা সবকিছু বদলে দিল। এক কঠিন ও সাহসী সিদ্ধান্ত নেওয়ার মুহূর্ত উপস্থিত হলো।`;
+        text = `রহস্যের অতল গভীরে ${cleanIdea}-এর একটি চমকপ্রद সত্য প্রকাশ পেল যা সবকিছু বদলে দিল। এক কঠিন ও সাহসী সিদ্ধান্ত নেওয়ার মুহূর্ত উপস্থিত হলো।`;
       } else if (language === 'Japanese') {
         text = `影の核心で、${cleanIdea}に関する予期せぬ真実が明かされ、すべてが変わりました。運命の分かれ道で、重大な選択を迫られます。`;
       } else {

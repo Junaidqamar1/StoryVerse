@@ -36,7 +36,7 @@ const STYLE_PRESETS = {
   },
 };
 
-const DEFAULT_STYLE = 'comic_color';
+const DEFAULT_STYLE = 'storybook';
 
 function resolveStyle(styleKey) {
   const aliasMap = {
