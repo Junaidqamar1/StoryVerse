@@ -3,23 +3,21 @@ const { mapWithConcurrency } = require('../utils/concurrency');
 const config = require('../config');
 const { resolveStyle } = require('./styles');
 
-function buildImagePrompt({ styleFragment, characterDescription, pageImagePrompt }) {
-  return [
-    styleFragment,
-    `Main Character: ${characterDescription}.`,
-    `Scene Details: ${pageImagePrompt}.`,
-    'Masterpiece 8k resolution, cinematic camera framing, volumetric atmospheric lighting, hyper-detailed textures, Octane Render style, award-winning illustration.',
-    'No text, no words, no letters, no logos, no watermarks anywhere in the image. Do not depict any real copyrighted characters, franchises, or brands.',
-  ].join(' ');
+function buildImagePrompt({ style, characterDescription, pageImagePrompt }) {
+  const styleFragment = style?.promptFragment || 'masterpiece 3D cinematic animation, Octane render, 8k resolution';
+  const cleanChar = (characterDescription || '').replace(/\.$/, '').trim();
+  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').replace(/\.$/, '').trim();
+
+  return `${cleanChar}, ${cleanScene}, ${styleFragment}, 8k resolution, cinematic studio lighting, hyper-detailed masterpiece illustration`.trim();
 }
 
 function buildConcisePollinationsPrompt({ style, pageImagePrompt, characterDescription, pageNumber }) {
-  const styleStr = style?.promptFragment ? style.promptFragment.slice(0, 80) : '3D cinematic animation, Octane render';
-  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').trim();
+  const styleStr = style?.promptFragment ? style.promptFragment.slice(0, 90) : '3D cinematic animation, Octane render';
+  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').replace(/\.$/, '').trim();
   const shortScene = cleanScene.slice(0, 160);
-  const shortChar = (characterDescription || '').slice(0, 100);
-  
-  return `masterpiece illustration, page ${pageNumber}, ${styleStr}, Scene: ${shortScene}, Character: ${shortChar}, 8k resolution, cinematic studio lighting`.trim();
+  const shortChar = (characterDescription || '').replace(/\.$/, '').slice(0, 100);
+
+  return `${shortChar}, ${shortScene}, ${styleStr}, 8k resolution, cinematic lighting, masterpiece illustration`.trim();
 }
 
 /**
@@ -100,9 +98,32 @@ function createStoryCraftSVG({ pageNumber, text, imagePrompt, styleKey, bookTitl
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+async function fetchPollinationsImage(prompt, model, seed) {
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=${model}&seed=${seed}&nologo=true&enhance=true`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 16000);
+  
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('image')) {
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      if (buffer.length > 5000) {
+        return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      }
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+  }
+  return null;
+}
+
 async function generateSinglePageImage(page, characterDescription, style, bookTitle) {
   const fullPrompt = buildImagePrompt({
-    styleFragment: style.promptFragment,
+    style,
     characterDescription,
     pageImagePrompt: page.imagePrompt,
   });
@@ -121,7 +142,7 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber}.`);
   }
 
-  // 2. Try Pollinations AI with model=flux, unique seed per page & validation
+  // 2. Try Pollinations AI with model=flux (1024x1024)
   const concisePrompt = buildConcisePollinationsPrompt({
     style,
     pageImagePrompt: page.imagePrompt,
@@ -130,33 +151,29 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
   });
 
   const seed = (page.pageNumber * 12345) + Math.floor(Math.random() * 8888);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=768&height=768&model=flux&seed=${seed}&nologo=true&enhance=true`;
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 18000);
-    const imgRes = await fetch(pollinationsUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    const contentType = imgRes.headers.get('content-type') || '';
-    if (imgRes.ok && contentType.includes('image')) {
-      const arrayBuffer = await imgRes.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      if (buffer.length > 4000) {
-        const base64Data = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-        console.log(`[imageGenerator] Successfully embedded Pollinations AI image for page ${page.pageNumber}`);
-        return {
-          ...page,
-          image: base64Data,
-          imageError: null,
-        };
-      }
-    }
-  } catch (pErr) {
-    console.warn(`[imageGenerator] Pollinations fetch skipped for page ${page.pageNumber} (${pErr.message}). Using craft vector fallback.`);
+  const fluxBase64 = await fetchPollinationsImage(concisePrompt, 'flux', seed);
+  if (fluxBase64) {
+    console.log(`[imageGenerator] Pollinations FLUX image synthesized for page ${page.pageNumber}`);
+    return {
+      ...page,
+      image: fluxBase64,
+      imageError: null,
+    };
   }
 
-  // 3. Story-specific craft artwork SVG fallback
+  // 3. Try Pollinations AI with model=turbo (1024x1024 fallback)
+  const turboBase64 = await fetchPollinationsImage(concisePrompt, 'turbo', seed);
+  if (turboBase64) {
+    console.log(`[imageGenerator] Pollinations TURBO image synthesized for page ${page.pageNumber}`);
+    return {
+      ...page,
+      image: turboBase64,
+      imageError: null,
+    };
+  }
+
+  // 4. Story-specific craft artwork SVG fallback
   const craftSvg = createStoryCraftSVG({
     pageNumber: page.pageNumber,
     text: page.text,

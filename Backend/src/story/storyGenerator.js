@@ -23,7 +23,7 @@ const STORY_SCHEMA = {
           imagePrompt: {
             type: 'STRING',
             description:
-              "A concrete visual description of THIS page's scene only - setting, action, mood, camera angle. Do NOT restate character appearance here (that's handled separately) - focus on what's happening and where. No text/words in the image.",
+              "A complete visual description of THIS page's scene in English detailing the main character performing a concrete action in a vivid environment with lighting and camera angle. Example: 'A brave young protagonist in a teal windbreaker standing on a mountain peak at sunrise, holding a glowing star medallion, wide angle cinematic lighting'. No text or letters in the image.",
           },
         },
         required: ['pageNumber', 'text', 'imagePrompt'],
