@@ -5,62 +5,50 @@ import { Link, useNavigate } from 'react-router-dom';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const navigate = useNavigate();
-
-  console.log('✅ LoginPage loaded');
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    console.log('🔥 LOGIN BUTTON CLICKED');
-    console.log('Email:', email);
-
     setLoading(true);
-    setError('');
+    setMessage('');
 
     try {
-      const backendUrl =
-        'https://storyverse-jsq5.onrender.com/auth/login';
-
-      console.log('➡️ Sending request to:', backendUrl);
-
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password,
-        }),
-      });
-
-      console.log('⬅️ Backend status:', response.status);
+      const response = await fetch(
+        'https://storyverse-jsq5.onrender.com/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
 
-      console.log('⬅️ Backend response:', data);
+      console.log('BACKEND RESPONSE:', data);
 
       if (!response.ok) {
         throw new Error(
           data.error ||
           data.message ||
-          `Login failed: ${response.status}`
+          'Login failed'
         );
       }
 
-      console.log('✅ LOGIN SUCCESS');
-
+      // Save real backend authentication data
       if (data.token) {
         localStorage.setItem(
           'storyverse_token',
           data.token
         );
-
-        console.log('✅ Token saved');
       }
 
       if (data.user) {
@@ -68,20 +56,16 @@ export default function LoginPage() {
           'storyverse_user',
           JSON.stringify(data.user)
         );
-
-        console.log('✅ User saved:', data.user);
       }
 
-      console.log('➡️ Redirecting to dashboard...');
-
+      // Real backend login succeeded
       navigate('/dashboard');
 
-    } catch (err) {
-      console.error('❌ LOGIN FAILED:', err);
+    } catch (error) {
+      console.error('LOGIN ERROR:', error);
 
-      setError(
-        err.message ||
-        'Something went wrong while logging in.'
+      setMessage(
+        error.message || 'Unable to connect to backend'
       );
     } finally {
       setLoading(false);
@@ -93,119 +77,77 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
 
-        {/* Header */}
+        <h1 className="text-3xl font-bold text-center text-stone-900">
+          Welcome back
+        </h1>
 
-        <div className="text-center mb-8">
+        <p className="text-center text-stone-500 mt-2 mb-8">
+          Log in to StoryVerse
+        </p>
 
-          <h1 className="text-3xl font-bold text-stone-900">
-            Welcome back
-          </h1>
-
-          <p className="text-stone-500 mt-2">
-            Log in to your StoryVerse account
-          </p>
-
-        </div>
-
-        {/* Error */}
-
-        {error && (
-          <div className="mb-5 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-            {error}
+        {message && (
+          <div className="mb-5 p-3 rounded-xl bg-red-50 text-red-600 text-sm">
+            {message}
           </div>
         )}
-
-        {/* Login Form */}
 
         <form
           onSubmit={handleLogin}
           className="space-y-5"
         >
 
-          {/* Email */}
-
           <div>
-
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-stone-700 mb-2"
-            >
+            <label className="block text-sm font-medium mb-2">
               Email
             </label>
 
             <input
-              id="email"
               type="email"
               value={email}
-              onChange={(e) => {
-                console.log(
-                  'Email changed:',
-                  e.target.value
-                );
-
-                setEmail(e.target.value);
-              }}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               placeholder="Enter your email"
-              autoComplete="email"
+              className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-black"
               required
-              className="w-full px-4 py-3 border border-stone-300 rounded-xl outline-none focus:border-black focus:ring-1 focus:ring-black"
             />
-
           </div>
 
-          {/* Password */}
-
           <div>
-
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-stone-700 mb-2"
-            >
+            <label className="block text-sm font-medium mb-2">
               Password
             </label>
 
             <input
-              id="password"
               type="password"
               value={password}
-              onChange={(e) => {
-                console.log('Password changed');
-
-                setPassword(e.target.value);
-              }}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               placeholder="Enter your password"
-              autoComplete="current-password"
+              className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-black"
               required
-              className="w-full px-4 py-3 border border-stone-300 rounded-xl outline-none focus:border-black focus:ring-1 focus:ring-black"
             />
-
           </div>
-
-          {/* Submit */}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-black text-white py-3 rounded-xl font-semibold disabled:opacity-50"
           >
-            {loading ? 'Connecting...' : 'Log in'}
+            {loading ? 'Logging in...' : 'Log in'}
           </button>
 
         </form>
 
-        {/* Register */}
-
-        <div className="text-center mt-7 text-sm text-stone-500">
-
-          <span>New here? </span>
-
+        <div className="text-center mt-6 text-sm text-stone-500">
+          New here?{' '}
           <Link
             to="/register"
-            className="font-semibold text-black hover:underline"
+            className="font-semibold text-black"
           >
             Create an account
           </Link>
-
         </div>
 
       </div>
