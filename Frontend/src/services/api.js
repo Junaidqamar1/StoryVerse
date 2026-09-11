@@ -17,6 +17,13 @@ export const API_URL =
 
 console.log('StoryVerse API:', API_URL);
 
+// Warm-up ping to wake up Render free tier backend on initial site load
+export function pingBackend() {
+  fetch(`${API_URL}/health`).catch(() => {});
+}
+
+pingBackend();
+
 // ======================================================
 // LOCAL STORAGE KEYS
 // ======================================================

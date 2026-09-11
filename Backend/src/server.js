@@ -8,7 +8,32 @@ const authRoutes = require('./routes/auth.routes');
 const booksRoutes = require('./routes/books.routes');
 
 const app = express();
-app.use(cors({ origin: config.frontendOrigin }));
+
+const allowedOrigins = [
+  'https://story-versev0.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(cleanOrigin) || config.frontendOrigin === '*') {
+      return callback(null, true);
+    }
+    if (config.frontendOrigin && cleanOrigin === config.frontendOrigin.replace(/\/$/, '')) {
+      return callback(null, true);
+    }
+    // Allow vercel preview / main deployments
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
 app.use(express.json({ limit: '10mb' })); // book responses carry base64 images, keep this generous
 
 // 👈 2. ADD THIS STATIC MIDDLEWARE LINE HERE
