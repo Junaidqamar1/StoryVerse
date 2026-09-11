@@ -17,7 +17,12 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError('');
+
+    // -----------------------------
+    // Frontend validation
+    // -----------------------------
 
     if (!username.trim()) {
       setError('Please enter a username');
@@ -34,7 +39,7 @@ const RegisterPage = () => {
       return;
     }
 
-    if (!/\S+@\S+\.\S+/.test(email)) {
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
       setError('Please enter a valid email address');
       return;
     }
@@ -54,18 +59,40 @@ const RegisterPage = () => {
       return;
     }
 
+    // -----------------------------
+    // Call REAL backend
+    // -----------------------------
+
     try {
       setLoading(true);
 
-      await register(
+      console.log('REGISTER PAGE: sending registration request');
+
+      const data = await register(
         username.trim(),
         email.trim(),
         password
       );
 
+      console.log(
+        'REGISTER PAGE: backend registration successful',
+        data
+      );
+
+      // Only navigate if backend registration succeeded
       navigate('/dashboard');
+
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      console.error(
+        'REGISTER PAGE: registration failed',
+        err
+      );
+
+      setError(
+        err?.message ||
+        'Registration failed. Please try again.'
+      );
+
     } finally {
       setLoading(false);
     }
@@ -89,7 +116,10 @@ const RegisterPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
 
           {/* Username */}
           <div>
@@ -104,7 +134,9 @@ const RegisterPage = () => {
               id="username"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) =>
+                setUsername(e.target.value)
+              }
               placeholder="Enter your username"
               autoComplete="username"
               className="w-full px-4 py-3 border rounded-lg"
@@ -125,7 +157,9 @@ const RegisterPage = () => {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               placeholder="Enter your email"
               autoComplete="email"
               className="w-full px-4 py-3 border rounded-lg"
@@ -146,7 +180,9 @@ const RegisterPage = () => {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
               placeholder="Enter your password"
               autoComplete="new-password"
               className="w-full px-4 py-3 border rounded-lg"
@@ -167,7 +203,9 @@ const RegisterPage = () => {
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) =>
+                setConfirmPassword(e.target.value)
+              }
               placeholder="Confirm your password"
               autoComplete="new-password"
               className="w-full px-4 py-3 border rounded-lg"
@@ -181,12 +219,16 @@ const RegisterPage = () => {
             disabled={loading}
             className="w-full py-3 rounded-lg font-semibold disabled:opacity-50"
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading
+              ? 'Creating account...'
+              : 'Create Account'}
           </button>
+
         </form>
 
         <p className="mt-6 text-center">
           Already have an account?{' '}
+
           <Link
             to="/login"
             className="font-semibold"
