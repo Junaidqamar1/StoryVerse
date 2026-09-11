@@ -218,18 +218,13 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     };
   }
 
-  // 5. Story-specific craft artwork SVG fallback
-  const craftSvg = createStoryCraftSVG({
-    pageNumber: page.pageNumber,
-    text: page.text,
-    imagePrompt: page.imagePrompt,
-    styleKey: style.key || 'storybook',
-    bookTitle,
-  });
+  // 5. Guaranteed Direct FLUX AI Image URL (Browser-rendered 1024x1024 AI image)
+  const directAiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true`;
+  console.log(`[imageGenerator] Assigned direct FLUX 1024x1024 AI image URL for page ${page.pageNumber}`);
 
   return {
     ...page,
-    image: craftSvg,
+    image: directAiUrl,
     imageError: null,
   };
 }
