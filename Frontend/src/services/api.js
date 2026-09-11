@@ -699,5 +699,49 @@ export async function generateBook({
     !prompt ||
     !prompt.trim()
   ) {
-    throw new Error(
+    throw new Error('Prompt is required.');
+  }
+
+  const url = `${API_URL}/books/generate`;
+
+  console.log('GENERATE BOOK →', url);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        prompt: prompt.trim(),
+        pageCount,
+        style,
+      }),
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    let data;
+
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      throw new Error(text || 'Server returned an invalid response.');
+    }
+
+    console.log('GENERATE BOOK ←', data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || data.message || `Book generation failed (${response.status})`
+      );
+    }
+
+    return data.book || data;
+  } catch (error) {
+    console.error('GENERATE BOOK ERROR:', error);
+    throw error;
+  }
+}
 
