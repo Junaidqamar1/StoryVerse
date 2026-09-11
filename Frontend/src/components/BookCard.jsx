@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getImageUrl } from '../services/api';
+import { getImageUrl, createCraftStorySVG } from '../services/api';
 import { Trash2, BookOpen, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function BookCard({ book, onDelete }) {
@@ -21,16 +21,15 @@ export default function BookCard({ book, onDelete }) {
 
   const [imgHasError, setImgHasError] = useState(false);
 
-  const fallbackArtByStyle = {
-    comic: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
-    ink: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
-    watercolor: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
-    storybook: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80',
-  };
+  const dynamicCraftCover = createCraftStorySVG({
+    title: book.title,
+    pageNumber: 1,
+    style: book.style,
+    promptText: book.prompt || book.title,
+  });
 
-  const defaultFallback = fallbackArtByStyle[book.style] || fallbackArtByStyle.storybook;
   const rawCover = book.coverImage || (Array.isArray(book.pages) && book.pages[0]?.image);
-  const coverSrc = imgHasError ? defaultFallback : (getImageUrl(rawCover) || defaultFallback);
+  const coverSrc = imgHasError ? dynamicCraftCover : (getImageUrl(rawCover) || dynamicCraftCover);
   const label = styleLabels[book.style] || book.style || 'Storybook';
   const badgeClass = styleBadgeStyles[book.style] || 'bg-stone-100 text-stone-700 border-stone-200';
 

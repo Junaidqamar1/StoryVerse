@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getBookById, getImageUrl } from '../services/api';
+import { getBookById, getImageUrl, createCraftStorySVG } from '../services/api';
 import Navbar from '../components/Navbar';
 import FloatingClouds from '../components/FloatingClouds';
 import Button from '../components/Button';
@@ -70,17 +70,16 @@ export default function BookReaderPage() {
     caption: 'Story illustration',
   };
 
-  const fallbackArtByStyle = {
-    comic: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
-    ink: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
-    watercolor: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
-    storybook: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80',
-  };
+  const dynamicCraftArt = createCraftStorySVG({
+    title: currentPage.title || book.title,
+    pageNumber: currentPage.pageNumber || currentPageIndex + 1,
+    style: book.style,
+    promptText: currentPage.text || currentPage.imagePrompt || book.prompt,
+  });
 
-  const defaultFallback = fallbackArtByStyle[book.style] || fallbackArtByStyle.storybook;
   const currentImageSrc = imageErrorMap[currentPageIndex]
-    ? defaultFallback
-    : (getImageUrl(currentPage.image) || getImageUrl(book.coverImage) || defaultFallback);
+    ? dynamicCraftArt
+    : (getImageUrl(currentPage.image) || getImageUrl(book.coverImage) || dynamicCraftArt);
 
   const hasPrev = currentPageIndex > 0;
   const hasNext = currentPageIndex < totalPages - 1;

@@ -58,6 +58,40 @@ export function getImageUrl(image) {
   return null;
 }
 
+/**
+ * Generates a dynamic craft vector artwork fallback matching the book title, chapter page, and art style.
+ */
+export function createCraftStorySVG({ title, pageNumber = 1, style, promptText }) {
+  const isDark = style === 'comic_bw' || style === 'ink';
+  const isComic = style === 'comic_color' || style === 'comic';
+
+  const bg1 = isDark ? '#181E29' : (isComic ? '#FFF4E0' : '#FAF3E0');
+  const bg2 = isDark ? '#0D1117' : (isComic ? '#FAD09C' : '#EAD7C3');
+  const accent = isDark ? '#E2C044' : (isComic ? '#E05A47' : '#B85B35');
+  const textColor = isDark ? '#F5F5F7' : '#2D231E';
+
+  const cleanTitle = (title || 'Illustrated Storybook').replace(/[<>&'"]/g, '').slice(0, 40);
+  const cleanSnippet = (promptText || 'Story Illustration').replace(/[<>&'"]/g, '').slice(0, 70);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+    <defs>
+      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${bg1}"/>
+        <stop offset="100%" stop-color="${bg2}"/>
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+    <rect x="24" y="24" width="552" height="552" rx="28" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="6 6" opacity="0.5"/>
+    <circle cx="300" cy="240" r="100" fill="${accent}" opacity="0.12"/>
+    <circle cx="300" cy="240" r="60" fill="none" stroke="${accent}" stroke-width="2" opacity="0.3"/>
+    <text x="300" y="225" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="bold" fill="${textColor}">${cleanTitle}</text>
+    <text x="300" y="260" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="${accent}" letter-spacing="2">CHAPTER ${pageNumber} • ILLUSTRATION</text>
+    <text x="300" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="${textColor}" opacity="0.85">"${cleanSnippet}..."</text>
+  </svg>`;
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 // ======================================================
 // LOCAL STORAGE KEYS
 // ======================================================
