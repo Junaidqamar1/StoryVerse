@@ -354,7 +354,7 @@ export default function HomePage() {
                         <img
                           alt="Journal and sketches with handwritten drafts"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\1003w-GM1wXo5InOY.webp"
+                          src="/images/1003w-GM1wXo5InOY.webp"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent"></div>
@@ -373,7 +373,7 @@ export default function HomePage() {
                         <img
                           alt="Storyteller planning world lore"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\1003w-PBwcHocJab8.webp"
+                          src="/images/1003w-PBwcHocJab8.webp"
                         />
                       </div>
                       <div className="absolute top-3 left-3 bg-[#FBF9F5]/95 backdrop-blur-sm rounded-md px-2.5 py-1 shadow-xs border border-[#E5DFD4]">
@@ -395,7 +395,7 @@ export default function HomePage() {
                         <img
                           alt="Desk with fountain pen, open storybook and warm tea"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\images (4).jfif"
+                          src="/images/images (4).jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
@@ -413,7 +413,7 @@ export default function HomePage() {
                         <img
                           alt="Typography swatches and illustrated storybook prints"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\images (5).jfif"
+                          src="/images/images (5).jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/75 via-transparent to-transparent"></div>
@@ -429,7 +429,7 @@ export default function HomePage() {
                         <img
                           alt="Journal and sketches with handwritten drafts"
                           className="w-full h-full object-cover"
-                          src="public\images\images (6).jfif"
+                          src="/images/images (6).jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent"></div>
@@ -444,7 +444,7 @@ export default function HomePage() {
                         <img
                           alt="Storyteller reading lore books"
                           className="w-full h-full object-cover"
-                          src="public\images\images (8).jfif"
+                          src="/images/images (8).jfif"
                         />
                       </div>
                       <div className="absolute top-3 left-3 bg-[#FBF9F5]/95 backdrop-blur-sm rounded-md px-2.5 py-1 shadow-xs border border-[#E5DFD4]">
@@ -471,7 +471,7 @@ export default function HomePage() {
                         <img
                           alt="Sunny creative desk with story notes and laptop"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\images (8).jfif"
+                          src="/images/images (8).jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"></div>
@@ -490,7 +490,7 @@ export default function HomePage() {
                         <img
                           alt="Arranging plot cards and story chapters on board"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\images.jfif"
+                          src="/images/images.jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent"></div>
@@ -514,7 +514,7 @@ export default function HomePage() {
                         <img
                           alt="Minimal creative layout with camera and storybooks"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\images (3).jfif"
+                          src="/images/images (3).jfif"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
@@ -532,7 +532,7 @@ export default function HomePage() {
                         <img
                           alt="Desk with watercolor palettes and illustrations"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          src="public\images\97f1740c3b4e5a9b02984e10afddf608.jpg"
+                          src="/images/97f1740c3b4e5a9b02984e10afddf608.jpg"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/75 via-transparent to-transparent"></div>
@@ -548,7 +548,7 @@ export default function HomePage() {
                         <img
                           alt="Sunny creative desk with story notes and laptop"
                           className="w-full h-full object-cover"
-                          src="public\images\1003w-GM1wXo5InOY.webp"
+                          src="/images/1003w-GM1wXo5InOY.webp"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"></div>
@@ -563,7 +563,7 @@ export default function HomePage() {
                         <img
                           alt="Arranging plot cards and story chapters on board"
                           className="w-full h-full object-cover"
-                          src="public\images\1003w-PBwcHocJab8.webp"
+                          src="/images/1003w-PBwcHocJab8.webp"
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent"></div>
@@ -907,7 +907,7 @@ export default function HomePage() {
                 <img
                   alt="Color Comic illustration style sample"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="public\images\Tradd-Moore-Doctor-Strange.avif"
+                  src="/images/Tradd-Moore-Doctor-Strange.avif"
                 />
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider text-stone-800 shadow-2xs border border-white">
                   Dynamic &amp; Graphic
@@ -941,7 +941,7 @@ export default function HomePage() {
                 <img
                   alt="Black & White Ink illustration style sample"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="public\images\maxresdefault.jpg"
+                  src="/images/maxresdefault.jpg"
                 />
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider text-stone-800 shadow-2xs border border-white">
                   Archival &amp; Moody
@@ -975,7 +975,7 @@ export default function HomePage() {
                 <img
                   alt="Storybook Watercolor illustration style sample"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="public\images\images (2).jpg"
+                  src="/images/images (2).jpg"
                 />
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider text-amber-800 shadow-2xs border border-white">
                   Luminous &amp; Soft
