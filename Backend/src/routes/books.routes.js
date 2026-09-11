@@ -32,41 +32,45 @@ router.post('/generate', async (req, res) => {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // 3. Process pages and convert base64 image data to local files
+    // 3. Process pages and convert base64 image data to reliable image URLs & Data URIs
     const processedPages = storyResult.pages.map((page) => {
-      // 💡 FIX: Accessing page.image directly since your map output assigns it directly
-      // Checking if cloudflare's nested format or our standard format is available
-      const rawImage = page.image && page.image.result ? page.image.result.image : (page.image ? page.image.base64 || page.image : null);
+      const rawImage = page.image && page.image.result 
+        ? page.image.result.image 
+        : (page.image ? page.image.base64 || page.image : null);
 
-      if (rawImage) {
+      if (rawImage && typeof rawImage === 'string') {
         try {
-          // Clean the base64 string if it contains a data URI prefix
           const base64Clean = rawImage.replace(/^data:image\/\w+;base64,/, '');
           
-          // Generate a completely unique file name for this page illustration
-          const fileName = `book-${Date.now()}-page-${page.pageNumber}.png`;
-          const filePath = path.join(uploadDir, fileName);
+          // Optionally save to physical disk if folder writable
+          try {
+            const fileName = `book-${Date.now()}-page-${page.pageNumber}.png`;
+            const filePath = path.join(uploadDir, fileName);
+            fs.writeFileSync(filePath, base64Clean, 'base64');
+          } catch (e) {
+            // disk write optional, data URI remains 100% functional
+          }
 
-          // Write the physical file to your local disk
-          fs.writeFileSync(filePath, base64Clean, 'base64');
-
-          // Replace the massive base64 object with a clean local server URL path
+          // Return Data URI string for instant, fault-tolerant display on Vercel/Frontend
           return {
             ...page,
-            image: {
-              url: `/images/${fileName}`, 
-              mimeType: 'image/png'
-            },
-            imageError: null // clear any errors
+            image: `data:image/jpeg;base64,${base64Clean}`,
+            imageError: null
           };
         } catch (fileErr) {
-          console.error(`Failed to save image to disk for page ${page.pageNumber}:`, fileErr);
-          return { ...page, image: null, imageError: 'Failed to write image file to local storage.' };
+          console.error(`Failed to process image for page ${page.pageNumber}:`, fileErr);
         }
       }
       
-      // If it hit an upper level error block in imageGenerator.js
-      return page;
+      const fallbackImage = page.image?.base64 
+        ? `data:image/jpeg;base64,${page.image.base64}` 
+        : (typeof page.image === 'string' ? page.image : null);
+
+      return {
+        ...page,
+        image: fallbackImage,
+        imageError: page.imageError || null
+      };
     });
 
     // 4. Create the final book document with the file paths

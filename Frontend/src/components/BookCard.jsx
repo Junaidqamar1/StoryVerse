@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../services/api';
 import { Trash2, BookOpen, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function BookCard({ book, onDelete }) {
@@ -18,7 +19,8 @@ export default function BookCard({ book, onDelete }) {
     watercolor: 'bg-amber-50 text-amber-800 border-amber-200/80',
   };
 
-  const coverSrc = book.coverImage || book.pages?.[0]?.image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbn674iMCijkvfkMueFK3ptfVbZgk9v5RzgPBs4SHXD5UVEoUatrtZzYZfDFVDVoNMED9vdDACnKRgnF6zBfwOfNj_533Gp3TJSSPbhgrsFeEZ6U1zGuJKKQZaq10julQWuh8mc9z3AyqHH93eMbe5RMuzxZ0Jq2OFbuqvSY-mpAV9-KbFB2LCl1TB8y3cnxhgzTNwJUi22ZRA6Yq7B4Laiugzmu7rc0rEaAPnnxAGStSa41u8tmh7';
+  const rawCover = book.coverImage || book.pages?.[0]?.image;
+  const coverSrc = getImageUrl(rawCover) || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbn674iMCijkvfkMueFK3ptfVbZgk9v5RzgPBs4SHXD5UVEoUatrtZzYZfDFVDVoNMED9vdDACnKRgnF6zBfwOfNj_533Gp3TJSSPbhgrsFeEZ6U1zGuJKKQZaq10julQWuh8mc9z3AyqHH93eMbe5RMuzxZ0Jq2OFbuqvSY-mpAV9-KbFB2LCl1TB8y3cnxhgzTNwJUi22ZRA6Yq7B4Laiugzmu7rc0rEaAPnnxAGStSa41u8tmh7';
   const label = styleLabels[book.style] || book.style || 'Storybook';
   const badgeClass = styleBadgeStyles[book.style] || 'bg-stone-100 text-stone-700 border-stone-200';
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getBookById } from '../services/api';
+import { getBookById, getImageUrl } from '../services/api';
 import Navbar from '../components/Navbar';
 import FloatingClouds from '../components/FloatingClouds';
 import Button from '../components/Button';
-import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen, Share2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen, Share2, Sparkles, ImageOff } from 'lucide-react';
 
 export default function BookReaderPage() {
   const { id } = useParams();
@@ -69,6 +69,8 @@ export default function BookReaderPage() {
     caption: 'Story illustration',
   };
 
+  const currentImageSrc = getImageUrl(currentPage.image) || getImageUrl(book.coverImage);
+
   const hasPrev = currentPageIndex > 0;
   const hasNext = currentPageIndex < totalPages - 1;
 
@@ -109,11 +111,18 @@ export default function BookReaderPage() {
           <div className="grid grid-cols-1 md:grid-cols-12 min-h-[480px]">
             {/* Left Column: Illustrated Art */}
             <div className="md:col-span-6 bg-stone-100 relative min-h-[320px] md:min-h-[520px] overflow-hidden flex items-center justify-center">
-              <img
-                src={currentPage.image}
-                alt={currentPage.title || book.title}
-                className="w-full h-full object-cover transition-all duration-300"
-              />
+              {currentImageSrc ? (
+                <img
+                  src={currentImageSrc}
+                  alt={currentPage.title || book.title}
+                  className="w-full h-full object-cover transition-all duration-300"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 text-stone-400 text-center">
+                  <ImageOff className="w-10 h-10 mb-2 opacity-50" />
+                  <span className="text-xs font-medium">Illustration pending</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
               {currentPage.caption && (
                 <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-xs text-white/90 text-xs px-3 py-1.5 rounded-xl text-center">

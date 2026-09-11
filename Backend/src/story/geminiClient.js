@@ -7,39 +7,65 @@ const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
  * endpoint, with retries and backoff on transient failures (429/503).
  * Ported as-is from Junaid's story service.
  */
-async function callGemini(model, body, { retries = 3 } = {}) {
+async function callGeminiWithFallback(body, { retries = 4 } = {}) {
   if (!config.geminiApiKey) {
     throw new Error(
       'GEMINI_API_KEY is not set. Get a free key at https://aistudio.google.com/apikey and add it to .env'
     );
   }
 
-  const url = `${BASE_URL}/${model}:generateContent?key=${config.geminiApiKey}`;
+  // Model fallback candidate list in priority order
+  const candidateModels = [
+    config.textModel && !config.textModel.includes('3.6') ? config.textModel : 'gemini-2.5-flash',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-pro',
+  ];
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+  let lastError;
 
-      if (!res.ok) {
-        const errText = await res.text();
-        if ((res.status === 429 || res.status === 503) && attempt < retries) {
-          const waitMs = 1500 * Math.pow(2, attempt); // 1.5s, 3s, 6s
-          console.warn(`  Gemini ${res.status} on ${model}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
-          await new Promise((r) => setTimeout(r, waitMs));
-          continue;
+  for (const model of candidateModels) {
+    const url = `${BASE_URL}/${model}:generateContent?key=${config.geminiApiKey}`;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        console.log(`[Gemini] Requesting model: ${model} (attempt ${attempt + 1}/${retries + 1})`);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          // Rate limit or high demand - retry with exponential backoff
+          if ((res.status === 429 || res.status === 503 || res.status === 500) && attempt < retries) {
+            const waitMs = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s, 16s
+            console.warn(`  Gemini ${res.status} on ${model}, retrying in ${waitMs}ms...`);
+            await new Promise((r) => setTimeout(r, waitMs));
+            continue;
+          }
+          throw new Error(`Gemini API error (${res.status} ${model}): ${errText}`);
         }
-        throw new Error(`Gemini API error (${res.status}): ${errText}`);
-      }
 
-      return await res.json();
-    } catch (err) {
-      if (attempt === retries) throw err;
+        const data = await res.json();
+        const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textOut) {
+          console.log(`[Gemini] Success using model: ${model}`);
+          return textOut;
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`[Gemini] Model ${model} failed: ${err.message}`);
+        // If it's a 404 or 400 (invalid model name), break inner loop to try next fallback model immediately
+        if (err.message.includes('404') || err.message.includes('400')) {
+          break;
+        }
+      }
     }
   }
+
+  throw lastError || new Error('All Gemini API model fallbacks failed due to high demand. Please try again in a few moments.');
 }
 
 /**
@@ -58,13 +84,7 @@ async function generateText({ prompt, responseSchema }) {
     },
   };
 
-  const data = await callGemini(config.textModel, body);
-  const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!textOut) {
-    throw new Error('Gemini returned no text content: ' + JSON.stringify(data));
-  }
-  return textOut;
+  return await callGeminiWithFallback(body);
 }
 
 module.exports = { generateText };
