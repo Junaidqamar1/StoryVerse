@@ -1,168 +1,157 @@
+
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import FloatingClouds from '../components/FloatingClouds';
-import Button from '../components/Button';
-import FormInput from '../components/FormInput';
-import { BookOpen, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const validate = () => {
-    const errs = {};
-    if (!email.trim()) {
-      errs.email = 'Please enter your email address';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errs.email = 'Please enter a valid email address';
-    }
-    if (!password) {
-      errs.password = 'Please enter your password';
-    } else if (password.length < 6) {
-      errs.password = 'Password must be at least 6 characters';
-    }
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setServerError('');
 
-    if (!validate()) return;
+    setLoading(true);
+    setMessage('');
 
-    setIsSubmitting(true);
     try {
-      await login(email, password);
-      // Redirect to dashboard on success
+      const response = await fetch(
+        'https://storyverse-jsq5.onrender.com/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      console.log('BACKEND RESPONSE:', data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+          data.message ||
+          'Login failed'
+        );
+      }
+
+      // Save real backend authentication data
+      if (data.token) {
+        localStorage.setItem(
+          'storyverse_token',
+          data.token
+        );
+      }
+
+      if (data.user) {
+        localStorage.setItem(
+          'storyverse_user',
+          JSON.stringify(data.user)
+        );
+      }
+
+      // Real backend login succeeded
       navigate('/dashboard');
-    } catch (err) {
-      setServerError(err.message || 'Incorrect email or password');
+
+    } catch (error) {
+      console.error('LOGIN ERROR:', error);
+
+      setMessage(
+        error.message || 'Unable to connect to backend'
+      );
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-[#D4E8FA] flex flex-col justify-between overflow-hidden">
-      {/* Subtle Floating Clouds touch */}
-      <FloatingClouds variant="subtle" />
+    <div className="min-h-screen bg-[#D4E8FA] flex items-center justify-center px-4">
 
-      {/* Top bar with back to home */}
-      <header className="relative z-30 pt-6 px-6 max-w-6xl mx-auto w-full flex items-center justify-between">
-        <Link
-          to="/"
-          className="inline-flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-stone-700 hover:text-black bg-white/70 backdrop-blur-xs px-4 py-2 rounded-full border border-white/80 transition-colors shadow-2xs"
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
+
+        <h1 className="text-3xl font-bold text-center text-stone-900">
+          Welcome back
+        </h1>
+
+        <p className="text-center text-stone-500 mt-2 mb-8">
+          Log in to StoryVerse
+        </p>
+
+        {message && (
+          <div className="mb-5 p-3 rounded-xl bg-red-50 text-red-600 text-sm">
+            {message}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleLogin}
+          className="space-y-5"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Storyverse</span>
-        </Link>
-      </header>
 
-      {/* Center Auth Card */}
-      <main className="relative z-20 flex-1 flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl border-2 border-white/95 shadow-[0_24px_50px_rgba(20,45,75,0.1)] p-8 sm:p-10">
-          {/* Logo & Headline */}
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center justify-center mb-3 group">
-              <div className="w-10 h-10 rounded-full bg-[#0D1116] flex items-center justify-center text-white shadow-2xs group-hover:scale-105 transition-transform">
-                <BookOpen className="w-5 h-5 stroke-[2]" />
-              </div>
-            </Link>
-            <h1 className="font-craft-serif text-3xl sm:text-4xl font-normal text-stone-900 tracking-tight">
-              Welcome back
-            </h1>
-            <p className="text-stone-500 text-sm mt-1.5 font-normal">
-              Log in to open your storybooks and drafts
-            </p>
-          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Email
+            </label>
 
-          {/* Server-level Error Alert */}
-          {serverError && (
-            <div className="mb-6 p-3.5 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-700 text-xs flex items-center space-x-2 animate-in fade-in duration-200">
-              <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>{serverError}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <FormInput
-              id="login-email"
+            <input
               type="email"
-              label="Email address"
-              placeholder="oliver@storyverse.com"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
-                if (serverError) setServerError('');
-              }}
-              error={errors.email}
-              autoComplete="email"
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              placeholder="Enter your email"
+              className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-black"
               required
             />
-
-            <FormInput
-              id="login-password"
-              type="password"
-              label="Password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
-                if (serverError) setServerError('');
-              }}
-              error={errors.password}
-              autoComplete="current-password"
-              required
-            />
-
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                isLoading={isSubmitting}
-                className="w-full text-base"
-              >
-                Log in
-              </Button>
-            </div>
-          </form>
-
-          {/* Link to Register */}
-          <div className="mt-8 text-center text-xs text-stone-500 pt-4 border-t border-stone-100">
-            <span>New here? </span>
-            <Link
-              to="/register"
-              className="font-semibold text-stone-800 hover:text-black hover:underline ml-1"
-            >
-              Create an account
-            </Link>
           </div>
-        </div>
-      </main>
 
-      {/* Footer copyright */}
-      <footer className="relative z-20 py-4 text-center text-xs text-stone-500">
-        Storyverse &bull; Illustrated storybooks
-      </footer>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Password
+            </label>
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              placeholder="Enter your password"
+              className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-black"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-black text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+          >
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
+
+        </form>
+
+        <div className="text-center mt-6 text-sm text-stone-500">
+          New here?{' '}
+          <Link
+            to="/register"
+            className="font-semibold text-black"
+          >
+            Create an account
+          </Link>
+        </div>
+
+      </div>
+
     </div>
   );
 }
