@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   ArrowRight,
   Play,
@@ -57,6 +58,9 @@ const LOADING_MESSAGES = [
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+
   // Modal & Screen states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -73,6 +77,22 @@ export default function HomePage() {
   const [promptText, setPromptText] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('watercolor');
   const [readerPage, setReaderPage] = useState(0);
+
+  const handleStartBook = () => {
+    if (isAuthenticated || localStorage.getItem('storyverse_token')) {
+      navigate('/create');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const handleGoToBookshelf = () => {
+    if (isAuthenticated || localStorage.getItem('storyverse_token')) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
 
   // Rotate generating status lines
   useEffect(() => {
@@ -174,63 +194,55 @@ export default function HomePage() {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center space-x-7 text-[14.5px] font-medium text-[#232933]">
-            <button
-              type="button"
-              onClick={() => setIsHowItWorksOpen(true)}
+            <a
+              href="#how-it-works"
               className="hover:text-black transition-colors cursor-pointer"
             >
               How it works
-            </button>
+            </a>
             <button
               type="button"
-              onClick={() => {
-                setIsCreateOpen(true);
-              }}
+              onClick={handleStartBook}
               className="hover:text-black transition-colors cursor-pointer"
             >
               Art styles
             </button>
             <button
               type="button"
-              onClick={() => {
-                setBookshelfEmpty(false);
-                setIsBookshelfOpen(true);
-              }}
+              onClick={handleGoToBookshelf}
               className="hover:text-black transition-colors cursor-pointer"
             >
               Bookshelf
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setBookshelfEmpty(true);
-                setIsBookshelfOpen(true);
-              }}
-              className="text-stone-500 hover:text-black transition-colors cursor-pointer text-[13px] bg-stone-100 px-2 py-0.5 rounded-full"
-            >
-              Empty state
             </button>
           </div>
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('login');
-                setIsAuthOpen(true);
-              }}
-              className="text-[14.5px] font-medium text-[#232933] hover:text-black transition-colors px-2 py-1 cursor-pointer"
-            >
-              Log in
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-[#101318] hover:bg-[#252A34] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition-all duration-150 transform hover:scale-[1.02] active:scale-98 craft-btn-shadow inline-flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>Start your book</span>
-            </button>
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={handleGoToBookshelf}
+                className="bg-[#101318] hover:bg-[#252A34] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition-all duration-150 transform hover:scale-[1.02] active:scale-98 craft-btn-shadow inline-flex items-center space-x-1.5 cursor-pointer"
+              >
+                <span>My Bookshelf</span>
+              </button>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-[14.5px] font-medium text-[#232933] hover:text-black transition-colors px-2 py-1 cursor-pointer"
+                >
+                  Log in
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleStartBook}
+                  className="bg-[#101318] hover:bg-[#252A34] text-white text-[14px] font-medium px-5 py-2.5 rounded-full transition-all duration-150 transform hover:scale-[1.02] active:scale-98 craft-btn-shadow inline-flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <span>Start your book</span>
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -266,7 +278,7 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-4 mb-10">
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(true)}
+                onClick={handleStartBook}
                 className="bg-[#0D1116] hover:bg-[#222832] text-white text-[15px] font-medium px-7 py-3.5 rounded-full craft-btn-shadow transition-all duration-200 transform hover:-translate-y-0.5 inline-flex items-center space-x-2 group cursor-pointer"
               >
                 <span>Start your book</span>
