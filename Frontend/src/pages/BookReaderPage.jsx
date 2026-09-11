@@ -53,9 +53,10 @@ export default function BookReaderPage() {
   const stopAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
-    if (window.speechSynthesis) {
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
     setIsPlaying(false);
@@ -189,26 +190,25 @@ export default function BookReaderPage() {
       return;
     }
 
-    if (!currentPage.text) return;
+    if (!currentPage || !currentPage.text) return;
 
     setIsAudioLoading(true);
 
-    // If user explicitly picked a Web Speech voice from dropdown, use Web Speech directly
-    if (selectedVoiceURI) {
-      fallbackWebSpeech();
-      return;
-    }
-
     try {
       // 1. Try server natural TTS endpoint (ElevenLabs / Google Natural voice)
-      const result = await fetchStoryAudio(currentPage.text, book.language);
+      const result = await fetchStoryAudio(currentPage.text, book?.language);
 
-      if (result.audioUrl) {
+      if (result && result.audioUrl) {
         const audio = new Audio(result.audioUrl);
         audio.playbackRate = speechSpeed; // Calmer, human storytelling pace
         audioRef.current = audio;
-        audio.onended = () => setIsPlaying(false);
-        audio.onerror = () => fallbackWebSpeech();
+        audio.onended = () => {
+          setIsPlaying(false);
+          setIsAudioLoading(false);
+        };
+        audio.onerror = () => {
+          fallbackWebSpeech();
+        };
         await audio.play();
         setIsPlaying(true);
         setIsAudioLoading(false);
@@ -225,10 +225,15 @@ export default function BookReaderPage() {
     if (!('speechSynthesis' in window)) {
       alert('Speech synthesis is not supported in your browser.');
       setIsAudioLoading(false);
+      setIsPlaying(false);
       return;
     }
 
     window.speechSynthesis.cancel();
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+
     const utterance = new SpeechSynthesisUtterance(currentPage.text);
     
     // Target language mapping
@@ -243,23 +248,51 @@ export default function BookReaderPage() {
       Italian: 'it-IT',
       Portuguese: 'pt-PT',
     };
-    const targetLang = (book.language && langMap[book.language]) ? langMap[book.language] : 'en-US';
+    const targetLang = (book?.language && langMap[book.language]) ? langMap[book.language] : 'en-US';
     utterance.lang = targetLang;
 
     // Apply user selected voice or best available voice
-    const chosenVoice = availableVoices.find((v) => v.voiceURI === selectedVoiceURI);
-    if (chosenVoice) {
-      utterance.voice = chosenVoice;
-    } else if (displayVoices.length > 0) {
-      utterance.voice = displayVoices[0];
+    const voices = availableVoices.length > 0 ? availableVoices : (window.speechSynthesis.getVoices() || []);
+    if (voices.length > 0) {
+      const chosenVoice = voices.find((v) => v.voiceURI === selectedVoiceURI);
+      if (chosenVoice) {
+        utterance.voice = chosenVoice;
+      } else if (displayVoices.length > 0) {
+        utterance.voice = displayVoices[0];
+      }
     }
 
     // Gentle, warm human storyteller pace and lower warm pitch
     utterance.rate = Math.min(speechSpeed, 0.85);
     utterance.pitch = 0.95;
 
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setIsAudioLoading(false);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsAudioLoading(false);
+    };
+
+    utterance.onerror = (err) => {
+      console.warn('[TTS] Speech synthesis error:', err);
+      // Fallback retry without specific voice object if custom voice failed
+      if (utterance.voice) {
+        const retryUtterance = new SpeechSynthesisUtterance(currentPage.text);
+        retryUtterance.lang = targetLang;
+        retryUtterance.rate = Math.min(speechSpeed, 0.85);
+        retryUtterance.pitch = 0.95;
+        retryUtterance.onstart = () => { setIsPlaying(true); setIsAudioLoading(false); };
+        retryUtterance.onend = () => { setIsPlaying(false); setIsAudioLoading(false); };
+        retryUtterance.onerror = () => { setIsPlaying(false); setIsAudioLoading(false); };
+        window.speechSynthesis.speak(retryUtterance);
+      } else {
+        setIsPlaying(false);
+        setIsAudioLoading(false);
+      }
+    };
 
     window.speechSynthesis.speak(utterance);
     setIsPlaying(true);

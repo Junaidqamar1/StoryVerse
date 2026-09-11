@@ -169,7 +169,8 @@ router.post('/tts', async (req, res) => {
       };
       const targetLang = (language && langCodeMap[language]) ? langCodeMap[language] : 'en';
 
-      const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const chunks = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+      if (chunks.length === 0) chunks.push(text);
       const audioBuffers = [];
 
       for (const chunk of chunks) {
