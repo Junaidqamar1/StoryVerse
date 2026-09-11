@@ -1,43 +1,56 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, getUser, setToken, setUser, removeToken, loginUser, registerUser } from '../services/api';
 
-const AuthContext = createContext(null);
+import React, { createContext, useContext, useState } from 'react';
 
-export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(getToken());
+import {
+  getToken,
+  getUser,
+  setToken,
+  setUser,
+  removeToken,
+  loginUser,
+  registerUser,
+} from '../services/api';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
   const [user, setUserState] = useState(getUser());
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    // Keep in sync with localStorage
-    const currentToken = getToken();
-    const currentUser = getUser();
-    setTokenState(currentToken);
-    setUserState(currentUser);
-  }, []);
+  const [token, setTokenState] = useState(getToken());
 
   const login = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const res = await loginUser(email, password);
-      setTokenState(res.token);
-      setUserState(res.user);
-      return res;
-    } finally {
-      setIsLoading(false);
+    const data = await loginUser(email, password);
+
+    if (data.token) {
+      setToken(data.token);
+      setTokenState(data.token);
     }
+
+    if (data.user) {
+      setUser(data.user);
+      setUserState(data.user);
+    }
+
+    return data;
   };
 
-  const register = async (email, password) => {
-    setIsLoading(true);
-    try {
-      const res = await registerUser(email, password);
-      setTokenState(res.token);
-      setUserState(res.user);
-      return res;
-    } finally {
-      setIsLoading(false);
+  const register = async (username, email, password) => {
+    const data = await registerUser(
+      username,
+      email,
+      password
+    );
+
+    if (data.token) {
+      setToken(data.token);
+      setTokenState(data.token);
     }
+
+    if (data.user) {
+      setUser(data.user);
+      setUserState(data.user);
+    }
+
+    return data;
   };
 
   const logout = () => {
@@ -47,16 +60,21 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated: !!token, login, register, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
