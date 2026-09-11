@@ -121,6 +121,41 @@ async function fetchPollinationsImage(prompt, model, seed) {
   return null;
 }
 
+/**
+ * High-definition Midjourney / Stable Diffusion XL image engine via Lexica API.
+ */
+async function fetchLexicaImage(prompt) {
+  try {
+    const cleanQuery = prompt.slice(0, 160).replace(/[^\w\s,]/gi, ' ').trim();
+    const url = `https://lexica.art/api/v1/search?q=${encodeURIComponent(cleanQuery)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.images) && data.images.length > 0) {
+        const match = data.images.find((img) => img && (img.src || img.srcSmall));
+        if (match) {
+          const targetUrl = match.src || match.srcSmall;
+          const imgRes = await fetch(targetUrl);
+          if (imgRes.ok) {
+            const buf = Buffer.from(await imgRes.arrayBuffer());
+            if (buf.length > 5000) {
+              console.log('[imageGenerator] Lexica AI Midjourney/SDXL image successfully embedded');
+              return `data:image/jpeg;base64,${buf.toString('base64')}`;
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[imageGenerator] Lexica AI fetch skipped:', err.message);
+  }
+  return null;
+}
+
 async function generateSinglePageImage(page, characterDescription, style, bookTitle) {
   const fullPrompt = buildImagePrompt({
     style,
@@ -128,7 +163,7 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     pageImagePrompt: page.imagePrompt,
   });
 
-  // 1. Try Cloudflare Workers AI
+  // 1. Try Cloudflare Workers AI (FLUX.1 schnell)
   try {
     const cloudflareResult = await generateImageCloudflare({ prompt: fullPrompt });
     if (cloudflareResult && cloudflareResult.base64) {
@@ -142,7 +177,17 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber}.`);
   }
 
-  // 2. Try Pollinations AI with model=flux (1024x1024)
+  // 2. Try Lexica AI Engine (High-Resolution Midjourney / SDXL render repository)
+  const lexicaImage = await fetchLexicaImage(fullPrompt);
+  if (lexicaImage) {
+    return {
+      ...page,
+      image: lexicaImage,
+      imageError: null,
+    };
+  }
+
+  // 3. Try Pollinations AI with model=flux (1024x1024)
   const concisePrompt = buildConcisePollinationsPrompt({
     style,
     pageImagePrompt: page.imagePrompt,
@@ -162,7 +207,7 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     };
   }
 
-  // 3. Try Pollinations AI with model=turbo (1024x1024 fallback)
+  // 4. Try Pollinations AI with model=turbo (1024x1024 fallback)
   const turboBase64 = await fetchPollinationsImage(concisePrompt, 'turbo', seed);
   if (turboBase64) {
     console.log(`[imageGenerator] Pollinations TURBO image synthesized for page ${page.pageNumber}`);
@@ -173,7 +218,7 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     };
   }
 
-  // 4. Story-specific craft artwork SVG fallback
+  // 5. Story-specific craft artwork SVG fallback
   const craftSvg = createStoryCraftSVG({
     pageNumber: page.pageNumber,
     text: page.text,
