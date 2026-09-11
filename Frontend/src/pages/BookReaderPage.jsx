@@ -13,6 +13,7 @@ export default function BookReaderPage() {
   const [book, setBook] = useState(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageErrorMap, setImageErrorMap] = useState({});
 
   useEffect(() => {
     async function load() {
@@ -68,8 +69,6 @@ export default function BookReaderPage() {
     image: book.coverImage,
     caption: 'Story illustration',
   };
-
-  const [imageErrorMap, setImageErrorMap] = useState({});
 
   const fallbackArtByStyle = {
     comic: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
