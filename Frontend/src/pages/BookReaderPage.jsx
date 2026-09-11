@@ -19,7 +19,29 @@ export default function BookReaderPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [speechSpeed, setSpeechSpeed] = useState(0.85); // 0.85 = Calm human storyteller speed
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
   const audioRef = useRef(null);
+
+  // Load available Web Speech API voices asynchronously (handles Chrome/Edge onvoiceschanged)
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) return;
+
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (voices.length > 0) {
+        setAvailableVoices(voices);
+      }
+    }
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
 
   const handleSpeedChange = (newSpeed) => {
     setSpeechSpeed(newSpeed);
@@ -124,6 +146,43 @@ export default function BookReaderPage() {
     watercolor: 'Storybook Watercolor',
   };
 
+  // Filter voices matching current story language
+  const langCodeMap = {
+    English: 'en',
+    Spanish: 'es',
+    French: 'fr',
+    German: 'de',
+    Hindi: 'hi',
+    Bengali: 'bn',
+    Japanese: 'ja',
+    Italian: 'it',
+    Portuguese: 'pt',
+  };
+  const targetBaseLang = (book?.language && langCodeMap[book.language]) ? langCodeMap[book.language] : 'en';
+
+  const matchingLangVoices = availableVoices.filter((v) =>
+    v.lang.toLowerCase().startsWith(targetBaseLang.toLowerCase())
+  );
+  const displayVoices = matchingLangVoices.length > 0 ? matchingLangVoices : availableVoices;
+
+  // Auto-select initial priority voice when voices load
+  useEffect(() => {
+    if (displayVoices.length > 0 && !selectedVoiceURI) {
+      const priorityKeywords = ['natural', 'neural', 'google', 'enhanced', 'premium', 'online', 'aria', 'jenny', 'guy', 'samantha', 'karen', 'daniel'];
+      let initial = null;
+      for (const kw of priorityKeywords) {
+        initial = displayVoices.find((v) => v.name.toLowerCase().includes(kw));
+        if (initial) break;
+      }
+      if (!initial) {
+        initial = displayVoices.find((v) => v.default) || displayVoices[0];
+      }
+      if (initial) {
+        setSelectedVoiceURI(initial.voiceURI);
+      }
+    }
+  }, [displayVoices, selectedVoiceURI]);
+
   const handleToggleNarration = async () => {
     if (isPlaying) {
       stopAudio();
@@ -133,6 +192,12 @@ export default function BookReaderPage() {
     if (!currentPage.text) return;
 
     setIsAudioLoading(true);
+
+    // If user explicitly picked a Web Speech voice from dropdown, use Web Speech directly
+    if (selectedVoiceURI) {
+      fallbackWebSpeech();
+      return;
+    }
 
     try {
       // 1. Try server natural TTS endpoint (ElevenLabs / Google Natural voice)
@@ -181,32 +246,16 @@ export default function BookReaderPage() {
     const targetLang = (book.language && langMap[book.language]) ? langMap[book.language] : 'en-US';
     utterance.lang = targetLang;
 
-    // Premium natural voice selection
-    const voices = window.speechSynthesis.getVoices();
-    if (voices && voices.length > 0) {
-      const baseLang = targetLang.split('-')[0].toLowerCase();
-      const matchingVoices = voices.filter(v => v.lang.toLowerCase().startsWith(baseLang));
-      const candidates = matchingVoices.length > 0 ? matchingVoices : voices;
-
-      const priorityKeywords = [
-        'natural', 'neural', 'google', 'enhanced', 'premium',
-        'online', 'aria', 'jenny', 'guy', 'samantha', 'karen', 'daniel'
-      ];
-      let selectedVoice = null;
-      for (const kw of priorityKeywords) {
-        selectedVoice = candidates.find(v => v.name.toLowerCase().includes(kw));
-        if (selectedVoice) break;
-      }
-      if (!selectedVoice) {
-        selectedVoice = candidates.find(v => v.default) || candidates[0];
-      }
-      if (selectedVoice) {
-        utterance.voice = selectedVoice;
-      }
+    // Apply user selected voice or best available voice
+    const chosenVoice = availableVoices.find((v) => v.voiceURI === selectedVoiceURI);
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
+    } else if (displayVoices.length > 0) {
+      utterance.voice = displayVoices[0];
     }
 
     // Gentle, warm human storyteller pace and lower warm pitch
-    utterance.rate = Math.min(speechSpeed, 0.82);
+    utterance.rate = Math.min(speechSpeed, 0.85);
     utterance.pitch = 0.95;
 
     utterance.onend = () => setIsPlaying(false);
@@ -278,7 +327,28 @@ export default function BookReaderPage() {
                     Chapter {currentPage.pageNumber || currentPageIndex + 1}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* Voice Selector Dropdown */}
+                    {displayVoices.length > 0 && (
+                      <select
+                        value={selectedVoiceURI}
+                        onChange={(e) => {
+                          setSelectedVoiceURI(e.target.value);
+                          if (isPlaying) {
+                            stopAudio();
+                          }
+                        }}
+                        className="text-xs bg-stone-100 border border-stone-200 text-stone-800 font-medium px-2.5 py-1.5 rounded-full outline-none focus:ring-1 focus:ring-amber-500 max-w-[130px] sm:max-w-[160px] truncate cursor-pointer shadow-2xs"
+                        title="Choose narrator voice"
+                      >
+                        {displayVoices.map((voice) => (
+                          <option key={voice.voiceURI} value={voice.voiceURI}>
+                            🎙️ {voice.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     {/* Speed Selector */}
                     <div className="inline-flex bg-stone-100 p-0.5 rounded-full text-[10px] font-semibold text-stone-600">
                       {[
