@@ -13,13 +13,13 @@ function buildImagePrompt({ styleFragment, characterDescription, pageImagePrompt
   ].join(' ');
 }
 
-function buildConcisePollinationsPrompt({ styleName, pageImagePrompt, characterDescription }) {
-  const shortStyle = styleName || 'masterpiece 3D cinematic animation';
-  const cleanScene = (pageImagePrompt || '').replace(/^Scene:\s*/i, '').trim();
-  const shortScene = cleanScene.slice(0, 140);
-  const shortChar = (characterDescription || '').slice(0, 80);
+function buildConcisePollinationsPrompt({ style, pageImagePrompt, characterDescription, pageNumber }) {
+  const styleStr = style?.promptFragment ? style.promptFragment.slice(0, 80) : '3D cinematic animation, Octane render';
+  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').trim();
+  const shortScene = cleanScene.slice(0, 160);
+  const shortChar = (characterDescription || '').slice(0, 100);
   
-  return `masterpiece, 8k, ${shortStyle}, ${shortScene}, ${shortChar}, cinematic studio lighting, highly detailed`.trim();
+  return `masterpiece illustration, page ${pageNumber}, ${styleStr}, Scene: ${shortScene}, Character: ${shortChar}, 8k resolution, cinematic studio lighting`.trim();
 }
 
 /**
@@ -121,14 +121,16 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber}.`);
   }
 
-  // 2. Try Pollinations AI with model=flux & validation
+  // 2. Try Pollinations AI with model=flux, unique seed per page & validation
   const concisePrompt = buildConcisePollinationsPrompt({
-    styleName: style.name || style.promptFragment?.slice(0, 40),
+    style,
     pageImagePrompt: page.imagePrompt,
     characterDescription,
+    pageNumber: page.pageNumber,
   });
 
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=512&height=512&model=flux&nologo=true`;
+  const seed = (page.pageNumber * 12345) + Math.floor(Math.random() * 8888);
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=768&height=768&model=flux&seed=${seed}&nologo=true&enhance=true`;
 
   try {
     const controller = new AbortController();

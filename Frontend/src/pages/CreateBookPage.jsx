@@ -40,6 +40,7 @@ export default function CreateBookPage() {
   // Speech-to-text state
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useState(null);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -62,8 +63,8 @@ export default function CreateBookPage() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.interimResults = false;
 
       const langMap = {
         English: 'en-US',
@@ -71,6 +72,7 @@ export default function CreateBookPage() {
         French: 'fr-FR',
         German: 'de-DE',
         Hindi: 'hi-IN',
+        Bengali: 'bn-IN',
         Japanese: 'ja-JP',
         Italian: 'it-IT',
         Portuguese: 'pt-PT',
@@ -85,12 +87,11 @@ export default function CreateBookPage() {
       };
 
       recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        if (transcript.trim()) {
-          setPrompt((prev) => (prev ? `${prev} ${transcript.trim()}` : transcript.trim()));
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const spokenText = event.results[0][0].transcript.trim();
+          if (spokenText) {
+            setPrompt((prev) => (prev ? `${prev} ${spokenText}` : spokenText));
+          }
         }
       };
 
@@ -317,13 +318,14 @@ export default function CreateBookPage() {
                   Multilingual output & voice recognition
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2">
                 {[
                   { name: 'English', flag: '🇬🇧' },
                   { name: 'Spanish', flag: '🇪🇸' },
                   { name: 'French', flag: '🇫🇷' },
                   { name: 'German', flag: '🇩🇪' },
                   { name: 'Hindi', flag: '🇮🇳' },
+                  { name: 'Bengali', flag: '🇧🇩' },
                   { name: 'Japanese', flag: '🇯🇵' },
                   { name: 'Italian', flag: '🇮🇹' },
                   { name: 'Portuguese', flag: '🇵🇹' },

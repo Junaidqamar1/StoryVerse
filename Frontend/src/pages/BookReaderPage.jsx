@@ -164,6 +164,7 @@ export default function BookReaderPage() {
       French: 'fr-FR',
       German: 'de-DE',
       Hindi: 'hi-IN',
+      Bengali: 'bn-IN',
       Japanese: 'ja-JP',
       Italian: 'it-IT',
       Portuguese: 'pt-PT',

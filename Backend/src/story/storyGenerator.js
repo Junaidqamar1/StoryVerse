@@ -75,6 +75,7 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
     French: `L'Épopée Fantastique: ${coreConcept}`,
     German: `Das Chronik-Abenteuer: ${coreConcept}`,
     Hindi: `${coreConcept}: एक महान साहसिक कहानी`,
+    Bengali: `${coreConcept}: এক মায়াবী অ্যাডভেঞ্চার`,
     Japanese: `${coreConcept} - 運命の物語`,
     Italian: `La Leggenda Incantata: ${coreConcept}`,
     Portuguese: `A Saga Lendária: ${coreConcept}`,
@@ -100,6 +101,8 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
         text = `Die Luft vibrierte vor Spannung, als der Funke von ${cleanIdea} den Nachthimmel erhellte. Ohne den Blick zurück folgte das Schicksal dem ersten Schritt ins Unbekannte. Ein kühler Wind trug uralte Legenden herbei.`;
       } else if (language === 'Hindi') {
         text = `रात के अंधेरे में ${cleanIdea} की एक अनोखी चमक ने पूरी दुनिया को चमका दिया। बिना किसी डर के, साहसी कदम अज्ञात रास्तों की ओर बढ़ चले। ठंडी हवाएं एक महान रहस्य की गवाही दे रही थीं।`;
+      } else if (language === 'Bengali') {
+        text = `আকাশজুড়ে এক মায়াবী আলো ছড়িয়ে পড়ল যখন ${cleanIdea}-এর নতুন অধ্যায় শুরু হলো। কোনো দ্বিধা ছাড়াই সাহসী হৃদয় সামনের অজানা পথের দিকে এগিয়ে চলল। প্রতিটি পদক্ষেপে এক নতুন রূপকথার সৃষ্টি হতে লাগল।`;
       } else if (language === 'Japanese') {
         text = `${cleanIdea}の輝きが夜空を染め上げ、運命の歯車が静かに動き始めました。躊躇うことなく、第一歩を踏み出します。澄んだ風が古の約束を囁いていました。`;
       } else {
@@ -115,6 +118,8 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
         text = `Ein strahlendes Licht erhellte den Horizont, als das Geheimnis von ${cleanIdea} vollendet wurde. Mut verwandelte alle Zweifel in einen unvergesslichen Triumph. Stille kehrte ein und hinterliess eine ewige Geschichte.`;
       } else if (language === 'Hindi') {
         text = `एक सुनहरी किरण ने पूरे परिदृश्य को भर दिया और ${cleanIdea} का महागाथा सफल हुआ। हर संदेह और डर एक महान विजय में बदल गया। अब चारों ओर शांति और खुशी का उजाला था।`;
+      } else if (language === 'Bengali') {
+        text = `এক পরম আলোর উদ্ভাসে চারদিক আলোকিত হয়ে উঠল যখন ${cleanIdea}-এর সমস্ত রহস্য এক স্মরণীয় বিজয়ে পরিণত হলো। সাহস এবং বিশ্বাস মিলিয়ে এক চিরন্তন জয়ের ইতিহাস তৈরি হলো।`;
       } else if (language === 'Japanese') {
         text = `眩い光が地平線を包み込み、${cleanIdea}の試練は見事に乗り越えられました。勇気はすべての迷いを消し去り、永遠の勝利をもたらしました。平和で美しい世界が広上がっています。`;
       } else {
@@ -130,6 +135,8 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
         text = `Im Zentrum der Schatten veränderte eine überraschende Enthüllung über ${cleanIdea} alles. Der Weg teilte sich und verlangte eine mutige Entscheidung. Es gab kein Zurück mehr.`;
       } else if (language === 'Hindi') {
         text = `गहरे सायों के बीच, ${cleanIdea} का एक बड़ा सच सामने आया जिसने सब कुछ बदल दिया। राह दो हिस्सों में बंट गई और एक निडर फैसला लेना पड़ा।`;
+      } else if (language === 'Bengali') {
+        text = `রহস্যের অতল গভীরে ${cleanIdea}-এর একটি চমকপ্রদ সত্য প্রকাশ পেল যা সবকিছু বদলে দিল। এক কঠিন ও সাহসী সিদ্ধান্ত নেওয়ার মুহূর্ত উপস্থিত হলো।`;
       } else if (language === 'Japanese') {
         text = `影の核心で、${cleanIdea}に関する予期せぬ真実が明かされ、すべてが変わりました。運命の分かれ道で、重大な選択を迫られます。`;
       } else {
@@ -145,6 +152,8 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
         text = `Beim Erforschen der Tiefen von ${cleanIdea} erwachten verborgene Geheimnisse unter dem Sternenlicht. Jeder Schritt brachte neues Staunen und aufregende Energie.`;
       } else if (language === 'Hindi') {
         text = `${cleanIdea} की गहराइयों में नए रहस्य तारों की छांव में सामने आने लगे। हर अगला पल एक नया रोमांच और जादू लेकर आ रहा था।`;
+      } else if (language === 'Bengali') {
+        text = `${cleanIdea}-এর রাজ্যময় নতুন পথ খুঁজে পাওয়ার সাথে সাথে তারার আলোয় ঢাকা প্রাচীন গোপনীয়তাগুলি জেগে উঠল। প্রতিটি মুহূর্ত এক নতুন আনন্দের জোয়ার নিয়ে এল।`;
       } else if (language === 'Japanese') {
         text = `${cleanIdea}の深部を進むにつれ、星明かりの下で眠っていた秘密が目覚めます。一歩ごとに新しい感動と期待が広上がります。`;
       } else {
