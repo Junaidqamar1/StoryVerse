@@ -18,7 +18,15 @@ export default function BookReaderPage() {
   // Audio narration state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [speechSpeed, setSpeechSpeed] = useState(0.85); // 0.85 = Calm human storyteller speed
   const audioRef = useRef(null);
+
+  const handleSpeedChange = (newSpeed) => {
+    setSpeechSpeed(newSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newSpeed;
+    }
+  };
 
   const stopAudio = () => {
     if (audioRef.current) {
@@ -132,6 +140,7 @@ export default function BookReaderPage() {
 
       if (result.audioUrl) {
         const audio = new Audio(result.audioUrl);
+        audio.playbackRate = speechSpeed; // Calmer, human storytelling pace
         audioRef.current = audio;
         audio.onended = () => setIsPlaying(false);
         audio.onerror = () => fallbackWebSpeech();
@@ -196,9 +205,9 @@ export default function BookReaderPage() {
       }
     }
 
-    // Warm storytelling pace and pitch
-    utterance.rate = 0.92;
-    utterance.pitch = 0.98;
+    // Gentle, warm human storyteller pace and lower warm pitch
+    utterance.rate = Math.min(speechSpeed, 0.82);
+    utterance.pitch = 0.95;
 
     utterance.onend = () => setIsPlaying(false);
     utterance.onerror = () => setIsPlaying(false);
@@ -264,39 +273,63 @@ export default function BookReaderPage() {
             {/* Right Column: Narrative Storybook Prose */}
             <div className="md:col-span-6 p-6 sm:p-10 flex flex-col justify-between bg-white">
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                   <div className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                     Chapter {currentPage.pageNumber || currentPageIndex + 1}
                   </div>
 
-                  {/* Voice Narration Button */}
-                  <button
-                    type="button"
-                    onClick={handleToggleNarration}
-                    disabled={isAudioLoading}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
-                      isPlaying
-                        ? 'bg-amber-500 text-white animate-pulse'
-                        : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
-                    }`}
-                  >
-                    {isAudioLoading ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Loading voice...</span>
-                      </>
-                    ) : isPlaying ? (
-                      <>
-                        <Square className="w-3.5 h-3.5 fill-current" />
-                        <span>Stop Voice</span>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Read Out Loud</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Speed Selector */}
+                    <div className="inline-flex bg-stone-100 p-0.5 rounded-full text-[10px] font-semibold text-stone-600">
+                      {[
+                        { speed: 0.75, label: '0.75x' },
+                        { speed: 0.85, label: '0.85x' },
+                        { speed: 1.0, label: '1.0x' },
+                      ].map((item) => (
+                        <button
+                          key={item.speed}
+                          type="button"
+                          onClick={() => handleSpeedChange(item.speed)}
+                          className={`px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
+                            speechSpeed === item.speed
+                              ? 'bg-amber-500 text-white shadow-2xs font-bold'
+                              : 'hover:text-stone-900'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Voice Narration Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleNarration}
+                      disabled={isAudioLoading}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                        isPlaying
+                          ? 'bg-amber-500 text-white animate-pulse'
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
+                      }`}
+                    >
+                      {isAudioLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Loading voice...</span>
+                        </>
+                      ) : isPlaying ? (
+                        <>
+                          <Square className="w-3.5 h-3.5 fill-current" />
+                          <span>Stop Voice</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Read Out Loud</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <h2 className="font-craft-serif text-2xl sm:text-3xl font-normal text-stone-900 mb-6 leading-tight">
