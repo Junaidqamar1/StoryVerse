@@ -6,50 +6,95 @@ const { resolveStyle } = require('./styles');
 function buildImagePrompt({ styleFragment, characterDescription, pageImagePrompt }) {
   return [
     styleFragment,
-    `Main character: ${characterDescription}.`,
-    `Scene: ${pageImagePrompt}.`,
+    `Main Character: ${characterDescription}.`,
+    `Scene Details: ${pageImagePrompt}.`,
+    'Masterpiece 8k resolution, cinematic camera framing, volumetric atmospheric lighting, hyper-detailed textures, Octane Render style, award-winning illustration.',
     'No text, no words, no letters, no logos, no watermarks anywhere in the image. Do not depict any real copyrighted characters, franchises, or brands.',
   ].join(' ');
 }
 
 function buildConcisePollinationsPrompt({ styleName, pageImagePrompt, characterDescription }) {
-  const shortStyle = styleName || 'storybook illustration';
+  const shortStyle = styleName || 'masterpiece 3D cinematic animation';
   const cleanScene = (pageImagePrompt || '').replace(/^Scene:\s*/i, '').trim();
-  const shortScene = cleanScene.slice(0, 100);
-  const shortChar = (characterDescription || '').slice(0, 60);
+  const shortScene = cleanScene.slice(0, 140);
+  const shortChar = (characterDescription || '').slice(0, 80);
   
-  return `${shortStyle}, ${shortScene}, ${shortChar}`.trim();
+  return `masterpiece, 8k, ${shortStyle}, ${shortScene}, ${shortChar}, cinematic studio lighting, highly detailed`.trim();
 }
 
 /**
- * Creates a story-specific vector artwork fallback when AI image APIs are unavailable or rate-limited.
+ * Creates a premium story-specific vector artwork fallback when AI image APIs are unavailable or rate-limited.
  */
 function createStoryCraftSVG({ pageNumber, text, imagePrompt, styleKey, bookTitle }) {
   const isDark = styleKey === 'comic_bw' || styleKey === 'ink';
-  const isComic = styleKey === 'comic_color' || styleKey === 'comic';
-  
-  const bg1 = isDark ? '#181E29' : (isComic ? '#FFF4E0' : '#FAF3E0');
-  const bg2 = isDark ? '#0D1117' : (isComic ? '#FAD09C' : '#EAD7C3');
-  const accent = isDark ? '#E2C044' : (isComic ? '#E05A47' : '#B85B35');
-  const textColor = isDark ? '#F5F5F7' : '#2D231E';
-  
-  const cleanTitle = (bookTitle || 'Illustrated Storybook').replace(/[<>&'"]/g, '').slice(0, 40);
-  const cleanText = (imagePrompt || text || 'Story illustration').replace(/[<>&'"]/g, '').slice(0, 70);
+  const isPixar = styleKey === 'pixar_3d' || styleKey === 'pixar';
+  const isAnime = styleKey === 'anime_epic' || styleKey === 'anime';
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  let bgGrad1 = '#1A2332';
+  let bgGrad2 = '#0D1117';
+  let accentGrad1 = '#F59E0B';
+  let accentGrad2 = '#EF4444';
+  let cardBg = 'rgba(255, 255, 255, 0.07)';
+  let textColor = '#FFFFFF';
+  let subTextColor = '#94A3B8';
+
+  if (isDark) {
+    bgGrad1 = '#1E293B';
+    bgGrad2 = '#0F172A';
+    accentGrad1 = '#38BDF8';
+    accentGrad2 = '#818CF8';
+  } else if (isPixar) {
+    bgGrad1 = '#312E81';
+    bgGrad2 = '#1E1B4B';
+    accentGrad1 = '#F43F5E';
+    accentGrad2 = '#FB923C';
+  } else if (isAnime) {
+    bgGrad1 = '#0F766E';
+    bgGrad2 = '#134E4A';
+    accentGrad1 = '#22D3EE';
+    accentGrad2 = '#A855F7';
+  }
+
+  const cleanTitle = (bookTitle || 'Illustrated Storybook').replace(/[<>&'"]/g, '').slice(0, 42);
+  const cleanText = (imagePrompt || text || 'Story illustration').replace(/[<>&'"]/g, '').slice(0, 75);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
     <defs>
       <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="${bg1}"/>
-        <stop offset="100%" stop-color="${bg2}"/>
+        <stop offset="0%" stop-color="${bgGrad1}"/>
+        <stop offset="100%" stop-color="${bgGrad2}"/>
       </linearGradient>
+      <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="${accentGrad1}"/>
+        <stop offset="100%" stop-color="${accentGrad2}"/>
+      </linearGradient>
+      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="16" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
     </defs>
     <rect width="100%" height="100%" fill="url(#bgGrad)"/>
-    <rect x="24" y="24" width="552" height="552" rx="28" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="6 6" opacity="0.5"/>
-    <circle cx="300" cy="240" r="100" fill="${accent}" opacity="0.12"/>
-    <circle cx="300" cy="240" r="60" fill="none" stroke="${accent}" stroke-width="2" opacity="0.3"/>
-    <text x="300" y="225" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="bold" fill="${textColor}">${cleanTitle}</text>
-    <text x="300" y="260" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="${accent}" letter-spacing="2">CHAPTER ${pageNumber} • ILLUSTRATION</text>
-    <text x="300" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="${textColor}" opacity="0.85">"${cleanText}..."</text>
+    
+    <!-- Ambient glowing orbs -->
+    <circle cx="400" cy="300" r="220" fill="${accentGrad1}" opacity="0.18" filter="url(#glow)"/>
+    <circle cx="200" cy="550" r="160" fill="${accentGrad2}" opacity="0.14" filter="url(#glow)"/>
+
+    <!-- Glassmorphic Inner Frame -->
+    <rect x="40" y="40" width="720" height="720" rx="36" fill="${cardBg}" stroke="url(#accentGrad)" stroke-width="2" stroke-opacity="0.4"/>
+    
+    <!-- Chapter Badge -->
+    <rect x="300" y="90" width="200" height="36" rx="18" fill="url(#accentGrad)"/>
+    <text x="400" y="113" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="800" fill="#FFFFFF" letter-spacing="2">CHAPTER ${pageNumber}</text>
+    
+    <!-- Geometric Art Illustration -->
+    <circle cx="400" cy="380" r="130" fill="none" stroke="url(#accentGrad)" stroke-width="3" stroke-dasharray="8 8" opacity="0.6"/>
+    <circle cx="400" cy="380" r="95" fill="none" stroke="${textColor}" stroke-width="1.5" opacity="0.3"/>
+    <polygon points="400,285 470,425 330,425" fill="url(#accentGrad)" opacity="0.35"/>
+    
+    <!-- Book Title & Scene Prose -->
+    <text x="400" y="560" text-anchor="middle" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="${textColor}">${cleanTitle}</text>
+    <text x="400" y="615" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="${subTextColor}" opacity="0.9">"${cleanText}..."</text>
+    <text x="400" y="675" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="${accentGrad1}" letter-spacing="3" opacity="0.8">STORYVERSE STUDIO ARTWORK</text>
   </svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;

@@ -46,15 +46,25 @@ export default function StylePicker({ selectedStyle, onSelectStyle }) {
 
   // Visual accents & thumbnail previews for styles
   const stylePreviews = {
-    comic: {
-      desc: 'Bold ink lines, vibrant saturated palettes, vintage pop-art textures',
+    pixar_3d: {
+      desc: '3D studio animation aesthetic, volumetric cinematic lighting, Octane render depth',
+      color: 'from-amber-200 to-indigo-200',
+      badge: 'Popular',
+    },
+    anime_epic: {
+      desc: 'Makoto Shinkai quality, breathtaking glowing atmospheres, vivid detail',
+      color: 'from-cyan-100 to-purple-200',
+      badge: 'Epic',
+    },
+    comic_color: {
+      desc: 'Bold ink lines, Marvel/DC graphic novel dynamic framing, saturated halftones',
       color: 'from-amber-200 to-rose-200',
     },
-    ink: {
-      desc: 'High-contrast woodblock engraving, delicate stippling, monochrome depth',
+    comic_bw: {
+      desc: 'Noir pen-and-ink engraving, intricate stippling, monochrome atmospheric depth',
       color: 'from-stone-800 to-stone-950 text-white',
     },
-    watercolor: {
+    storybook: {
       desc: 'Soft gouache washes, whimsical paper grain, golden storybook warmth',
       color: 'from-sky-100 to-amber-100',
     },
@@ -67,7 +77,7 @@ export default function StylePicker({ selectedStyle, onSelectStyle }) {
           Art style
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[1, 2, 3].map((n) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <div
               key={n}
               className="h-20 rounded-2xl bg-white/60 border border-stone-200/60 animate-pulse"
@@ -87,7 +97,7 @@ export default function StylePicker({ selectedStyle, onSelectStyle }) {
         <span className="text-xs text-stone-400">Consistent character art across every page</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
         {stylesList.map((styleItem) => {
           const isSelected = selectedStyle === styleItem.key;
           const preview = stylePreviews[styleItem.key] || {
@@ -106,22 +116,31 @@ export default function StylePicker({ selectedStyle, onSelectStyle }) {
                   : 'bg-white/80 hover:bg-white border-stone-200/80 hover:border-stone-300 shadow-2xs'
               }`}
             >
-              <div className="flex items-start justify-between mb-2">
-                <span className="font-craft-serif text-lg font-normal text-stone-900 leading-snug">
-                  {styleItem.label}
-                </span>
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
-                    isSelected ? 'bg-stone-900 text-white' : 'border border-stone-300'
-                  }`}
-                >
-                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+              <div>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-craft-serif text-base sm:text-lg font-normal text-stone-900 leading-snug">
+                      {styleItem.label}
+                    </span>
+                    {preview.badge && (
+                      <span className="text-[10px] bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {preview.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected ? 'bg-stone-900 text-white' : 'border border-stone-300'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
                 </div>
-              </div>
 
-              <p className="text-[12px] text-stone-500 leading-relaxed">
-                {preview.desc}
-              </p>
+                <p className="text-[12px] text-stone-500 leading-relaxed">
+                  {preview.desc}
+                </p>
+              </div>
             </button>
           );
         })}

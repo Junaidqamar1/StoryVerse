@@ -9,27 +9,45 @@
  * generated prompt - keep it to style/technique descriptors only.
  */
 const STYLE_PRESETS = {
-  comic_color: {
-    label: 'Color Comic',
+  pixar_3d: {
+    label: '3D Cinematic Animation',
     promptFragment:
-      'professional comic book illustration, bold heavy black ink outlines, dynamic dramatic action pose, cinematic dramatic lighting with strong shadows, vibrant saturated colors, halftone dot shading, sharp high-contrast inking, detailed comic panel linework, energetic composition with motion lines',
+      'masterpiece 3D animation render, Pixar and Disney animated film studio aesthetic, Octane Render, 8k resolution, subsurface scattering skin, cinematic studio lighting, vibrant atmospheric depth, ultra-detailed textures, volumetric light rays, rich color grading, beautiful soft bokeh background',
+  },
+  anime_epic: {
+    label: 'Cinematic Fantasy Anime',
+    promptFragment:
+      'masterpiece epic anime illustration, Makoto Shinkai and Studio Ghibli quality, high definition 8k render, crisp detailed linework, breathtaking dramatic sky, glowing lighting effects, cinematic camera angle, rich ambient occlusion, vivid color palette',
+  },
+  comic_color: {
+    label: 'Color Graphic Novel',
+    promptFragment:
+      'professional graphic novel illustration, Marvel DC style comic art, bold crisp black ink outlines, dynamic action framing, cinematic dramatic lighting with intense rim light, vibrant rich colors, detailed halftones and crosshatching shading, masterpiece 8k digital illustration',
   },
   comic_bw: {
-    label: 'Black & White Ink',
+    label: 'Noir Pen & Ink',
     promptFragment:
-      'black and white ink comic illustration, bold dramatic linework, heavy crosshatching and stippled halftone shading, high contrast noir lighting, dynamic action lines, detailed pen-and-ink technique, no color, graphic novel style',
+      'masterpiece black and white graphic novel ink drawing, high contrast film noir lighting, intricate stippling and heavy crosshatching, dramatic shadows, bold expressive linework, classic comic book pen and ink illustration, 8k depth',
   },
   storybook: {
-    label: 'Storybook Watercolor',
+    label: 'Masterpiece Watercolor',
     promptFragment:
-      'warm watercolor and gouache children\'s storybook illustration, soft painterly texture, gentle whimsical linework, warm inviting color palette',
+      'award-winning children\'s book watercolor and gouache illustration, soft dreamy lighting, whimsical textured paper grain, rich painterly brushstrokes, magical golden hour illumination, detailed fairytale environment art, heartwarming character feel',
   },
 };
 
 const DEFAULT_STYLE = 'comic_color';
 
 function resolveStyle(styleKey) {
-  return STYLE_PRESETS[styleKey] || STYLE_PRESETS[DEFAULT_STYLE];
+  const aliasMap = {
+    comic: 'comic_color',
+    ink: 'comic_bw',
+    watercolor: 'storybook',
+    pixar: 'pixar_3d',
+    anime: 'anime_epic',
+  };
+  const key = aliasMap[styleKey] || styleKey;
+  return STYLE_PRESETS[key] || STYLE_PRESETS[DEFAULT_STYLE];
 }
 
 module.exports = { STYLE_PRESETS, DEFAULT_STYLE, resolveStyle };

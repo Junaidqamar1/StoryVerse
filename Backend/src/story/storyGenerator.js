@@ -34,60 +34,58 @@ const STORY_SCHEMA = {
 };
 
 function buildPrompt(userIdea, pageCount, language = 'English') {
-  return `You are a bestselling published author known for prose that reads nothing like AI writing - tight, specific, sensory, alive on the page.
+  return `You are a World-Class Master Storyteller and Award-Winning Author (Pixar, Studio Ghibli, NYT Bestseller caliber). Your writing is captivating, deeply emotional, cinematic, and rich with sensory detail.
 
-A user gave you this idea/dream/prompt:
+A user has pitched this story dream/idea:
 "${userIdea}"
 
-Write a complete illustrated story based on it with exactly ${pageCount} pages.
+Create an epic, complete illustrated storybook with exactly ${pageCount} pages based on this prompt.
 
 LANGUAGE REQUIREMENT:
-The story's "title" and each page's narrative "text" MUST be written fluently in ${language}.
-The "characterDescription" and "imagePrompt" fields must be kept in English to ensure accurate AI image generation.
+- The story "title" and each page's narrative "text" MUST be written fluently in ${language}.
+- The "characterDescription" and "imagePrompt" fields MUST be written in detailed English to ensure hyper-accurate AI image rendering.
 
-CRAFT RULES (these matter more than plot):
-- Open page 1 mid-action or mid-image, never with scene-setting throat-clearing.
-- Show, don't tell. Instead of naming an emotion, describe the physical/sensory detail that reveals it.
-- Vary sentence length hard - some pages should have one short, punchy sentence next to a longer flowing one.
-- Use concrete, specific nouns and verbs.
-- End every page on a hook, image, or unresolved beat that pulls the reader to the next page.
-- Build one real narrative arc across all ${pageCount} pages.
+MASTER STORYTELLING CRAFT RULES:
+1. HOOK IMMEDIATELY: Start Page 1 right in the middle of visceral action or vivid sensation. No cliché openings like "Once upon a time" or slow scene setup.
+2. SHOW, DON'T TELL: Paint rich atmospheric imagery—sound, color, temperature, chest-tightening emotion.
+3. SENTENCE DYNAMICS: Alternate between short, heart-pounding beats and poetic, sweeping prose.
+4. CHARACTER CONSISTENCY: Invent ONE visually iconic main character. In "characterDescription", provide a fixed, concrete physical description in English (exact clothing, hair color/style, eye color, signature accessories, age/expression) that will be used across every page image.
+5. PAGE IMAGE PROMPT: For each page, write a standalone cinematic image prompt in English detailing camera angle (e.g. dramatic low-angle shot, cinematic wide lens), lighting (e.g. volumetric golden hour, bioluminescent glow), action, environment, and mood.
+6. SATISFYING CLIMAX & ENDING: Build a cohesive 3-act narrative arc across all ${pageCount} pages with an unforgettable resolution beat.
 
-CHARACTER CONSISTENCY:
-Invent ONE clear, specific, visually distinctive main character and describe their fixed appearance concretely in English in "characterDescription".
+FORMAT PER PAGE:
+- "pageNumber": Integer (1 to ${pageCount})
+- "text": 3-5 sentences of breathtaking, publisher-quality prose in ${language}.
+- "imagePrompt": Detailed cinematic visual scene description in English for image generation.
 
-FORMAT per page:
-- "text": 2-4 sentences of the actual prose in ${language}.
-- "imagePrompt": what's happening in THIS page's scene in English.
-
-Return only the structured story data.`;
+Return ONLY valid JSON matching the schema.`;
 }
 
 /**
  * Fallback story generator for when Gemini API hits quota limits (429) or is unavailable.
- * Supports multilingual story generation.
+ * Delivers cinematic, multi-sentence stories customized to the user's idea in 8 languages.
  */
 function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'English') {
-  const cleanIdea = userIdea.trim().replace(/[^\w\s]/gi, '');
-  const words = cleanIdea.split(/\s+/).filter(Boolean);
-  const titleCore = words.slice(0, 5).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  const cleanIdea = userIdea.trim();
+  const words = cleanIdea.replace(/[^\w\s]/gi, '').split(/\s+/).filter(Boolean);
+  const coreConcept = words.slice(0, 6).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || 'The Great Adventure';
 
   const titleTemplates = {
-    Spanish: `La Leyenda de ${titleCore || 'El Viajero del Espacio'}`,
-    French: `L'Histoire de ${titleCore || 'Le Voyageur des Étoiles'}`,
-    German: `Die Geschichte von ${titleCore || 'Der Traumwanderer'}`,
-    Hindi: `${titleCore || 'सपनों की यात्रा'} की कहानी`,
-    Japanese: `${titleCore || '星の旅人'}の物語`,
-    Italian: `La Storia di ${titleCore || 'Il Viaggiatore del Tempo'}`,
-    Portuguese: `A História de ${titleCore || 'O Viajante das Estrelas'}`,
-    English: titleCore ? `The Tale of ${titleCore}` : 'The Journey Beyond the Stars',
+    Spanish: `La Odisea Extraordinaria: ${coreConcept}`,
+    French: `L'Épopée Fantastique: ${coreConcept}`,
+    German: `Das Chronik-Abenteuer: ${coreConcept}`,
+    Hindi: `${coreConcept}: एक महान साहसिक कहानी`,
+    Japanese: `${coreConcept} - 運命の物語`,
+    Italian: `La Leggenda Incantata: ${coreConcept}`,
+    Portuguese: `A Saga Lendária: ${coreConcept}`,
+    English: `The Legend of ${coreConcept}`,
   };
 
   const title = titleTemplates[language] || titleTemplates.English;
-  const characterDescription = 'A spirited adventurer with messy hazel hair, wearing a teal windbreaker jacket, a silver star compass necklace, and sturdy leather boots';
+  const characterDescription = 'A brave young protagonist with striking amber eyes, wearing an embroidered midnight-blue jacket, a brass compass medallion, leather boots, and carrying a glowing starlight lantern';
 
-  const pages = [];
   const total = Math.max(3, Math.min(12, pageCount));
+  const pages = [];
 
   for (let i = 1; i <= total; i++) {
     let text = '';
@@ -95,64 +93,64 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
 
     if (i === 1) {
       if (language === 'Spanish') {
-        text = `La aventura comenzó a mitad de camino en un mundo moldeado por visiones de ${userIdea}. El viento fresco soplaba en el horizonte trayendo ecos lejanos. Cada paso marcaba el comienzo de algo extraordinario.`;
+        text = `El aire vibraba con electricidad cuando la chispa de ${cleanIdea} encendió el cielo nocturno. Sin mirar atrás, el destino dio su primer paso hacia lo desconocido. El viento soplaba con fuerza revelando antiguas promesas.`;
       } else if (language === 'French') {
-        text = `L'aventure s'est ouverte au milieu d'un monde façonné par des visions de ${userIdea}. Le vent frais balayait l'horizon, portant des échos lointains. Chaque pas marquait le début de quelque chose d'extraordinaire.`;
+        text = `L'air vibrait d'électricité lorsque l'étincelle de ${cleanIdea} a enflammé le ciel nocturne. Sans regarder en arrière, le destin a franchi son premier pas vers l'inconnu. Le vent soufflait en révélant de précieuses promesses.`;
       } else if (language === 'German') {
-        text = `Das Abenteuer begann mitten in einer Welt, die von Visionen von ${userIdea} geprägt war. Kühler Wind strich über den Horizont und trug ferne Melodien. Jeder Schritt war der Anfang von etwas Aussergewöhnlichem.`;
+        text = `Die Luft vibrierte vor Spannung, als der Funke von ${cleanIdea} den Nachthimmel erhellte. Ohne den Blick zurück folgte das Schicksal dem ersten Schritt ins Unbekannte. Ein kühler Wind trug uralte Legenden herbei.`;
       } else if (language === 'Hindi') {
-        text = `${userIdea} की कल्पनाओं से बनी दुनिया में एक नया अध्याय शुरू हुआ। ठंडी हवाएं क्षितिज पर बह रही थीं और हर कदम एक अनोखी यात्रा की ओर ले जा रहा था।`;
+        text = `रात के अंधेरे में ${cleanIdea} की एक अनोखी चमक ने पूरी दुनिया को चमका दिया। बिना किसी डर के, साहसी कदम अज्ञात रास्तों की ओर बढ़ चले। ठंडी हवाएं एक महान रहस्य की गवाही दे रही थीं।`;
       } else if (language === 'Japanese') {
-        text = `${userIdea}のビジョンによって形作られた世界へと冒険が始まりました。冷たい風が地平線を吹き抜け、遠くの響きを運んできます。踏み出す一歩一歩が、特別な物語の始まりでした。`;
+        text = `${cleanIdea}の輝きが夜空を染め上げ、運命の歯車が静かに動き始めました。躊躇うことなく、第一歩を踏み出します。澄んだ風が古の約束を囁いていました。`;
       } else {
-        text = `The adventure opened mid-stride into a world shaped by visions of ${userIdea}. Cool wind brushed against the horizon, carrying static and distant music. Every step forward marked the end of fear and the start of something extraordinary.`;
+        text = `The atmosphere crackled with electric wonder as the spark of ${cleanIdea} ignited the horizon. Without hesitation, the journey began right into the heart of the uncharted realm. Thunderous winds carried distant melodies of ancient bravery.`;
       }
-      imagePrompt = `Opening scene of an epic journey inspired by ${userIdea}, standing at a breathtaking cliff overlook, cinematic wide angle, dramatic atmospheric sky.`;
+      imagePrompt = `Cinematic wide-angle opening shot, standing at an epic mountain ridge overlooking a breathtaking fantasy landscape inspired by ${cleanIdea}, golden atmospheric lighting, volumetric clouds, dramatic composition.`;
     } else if (i === total) {
       if (language === 'Spanish') {
-        text = `La luz dorada del sol bañaba el paisaje mientras se lograba la victoria final. El desafío de ${userIdea} fue superado con brillantez, transformando el camino hacia el futuro. La jornada estaba completa.`;
+        text = `Una luz radiante iluminó el horizonte cuando el misterio de ${cleanIdea} se resolvió triunfalmente. El coraje transformó los momentos de duda en una victoria imborrable. La calma volvió, dejando un legado eterno.`;
       } else if (language === 'French') {
-        text = `La lumière dorée du soleil baignait le paysage alors que la victoire finale prenait forme. Le défi de ${userIdea} a été relevé avec éclat, transformant le chemin à venir. Le voyage était accompli.`;
+        text = `Une lumière radieuse a illuminé l'horizon lorsque le mystère de ${cleanIdea} a trouvé sa réponse victorieuse. Le courage a métamorphosé chaque doute en un chef-d'œuvre de liberté. La paix est revenue, gravée pour toujours.`;
       } else if (language === 'German') {
-        text = `Goldenes Sonnenlicht tauchte die Landschaft in Glanz, als der finale Sieg errungen wurde. Die Herausforderung von ${userIdea} war meisterhaft bestanden. Die Reise war vollendet.`;
+        text = `Ein strahlendes Licht erhellte den Horizont, als das Geheimnis von ${cleanIdea} vollendet wurde. Mut verwandelte alle Zweifel in einen unvergesslichen Triumph. Stille kehrte ein und hinterliess eine ewige Geschichte.`;
       } else if (language === 'Hindi') {
-        text = `सुनहरी धूप पूरे परिदृश्य में फैल गई और अंतिम विजय हासिल हुई। ${userIdea} की चुनौती को साहस के साथ पूरा किया गया और यात्रा सफल रही।`;
+        text = `एक सुनहरी किरण ने पूरे परिदृश्य को भर दिया और ${cleanIdea} का महागाथा सफल हुआ। हर संदेह और डर एक महान विजय में बदल गया। अब चारों ओर शांति और खुशी का उजाला था।`;
       } else if (language === 'Japanese') {
-        text = `黄金色の朝日が風景を包み込み、ついに勝利が訪れました。${userIdea}の試練は見事に乗り越えられ、新しい道が開かれました。旅はついに完了しました。`;
+        text = `眩い光が地平線を包み込み、${cleanIdea}の試練は見事に乗り越えられました。勇気はすべての迷いを消し去り、永遠の勝利をもたらしました。平和で美しい世界が広上がっています。`;
       } else {
-        text = `Golden sunlight bathed the landscape as final victory took hold. The challenge of ${userIdea} was met with quiet brilliance, transforming the path ahead into a bright, endless meadow. The journey was complete.`;
+        text = `A radiant golden glow bathed the valley as the central mystery of ${cleanIdea} came to a triumphant resolution. True courage had turned uncertainty into a legendary triumph. Quiet wonder returned, sealing a legacy that would echo through ages.`;
       }
-      imagePrompt = `Triumphant resolution scene, golden hour sunlight, peaceful majestic landscape, sense of quiet wonder and accomplishment.`;
+      imagePrompt = `Majestic triumphant climax, golden hour sunlight streaming through crystal structures, sense of awe, emotional resolution, masterpiece 8k render, octane render style.`;
     } else if (i === Math.floor(total / 2)) {
       if (language === 'Spanish') {
-        text = `Las sombras se alargaban mientras un giro inesperado lo cambió todo. Frente al pulso central de ${userIdea}, se debía tomar una decisión decisiva. Ya no había vuelta atrás.`;
+        text = `En el centro de las sombras, un descubrimiento insospechado sobre ${cleanIdea} lo cambió todo. El camino se dividió en dos, exigiendo una elección Audaz e irreversible. Nadie podía echarse atrás ahora.`;
       } else if (language === 'French') {
-        text = `Les ombres s'étiraient alors qu'un tournant soudain a tout changé. Au cœur de ${userIdea}, un choix décisif devait être fait. Il n'y avait plus de retour en arrière.`;
+        text = `Au cœur des ombres, une découverte inattendue liée à ${cleanIdea} a tout bouleversé. Le chemin s'est divisé, imposant un choix audacieux et irréversible. Impossible de faire marche arrière.`;
       } else if (language === 'German') {
-        text = `Schatten verängten den Weg, als eine plötzliche Wendung alles veränderte. Im Zentrum von ${userIdea} musste eine mutige Entscheidung getroffen werden. Es gab kein Zurück mehr.`;
+        text = `Im Zentrum der Schatten veränderte eine überraschende Enthüllung über ${cleanIdea} alles. Der Weg teilte sich und verlangte eine mutige Entscheidung. Es gab kein Zurück mehr.`;
       } else if (language === 'Hindi') {
-        text = `अचानक आए एक मोड़ ने सब कुछ बदल दिया। ${userIdea} के केंद्र में खड़े होकर एक महत्वपूर्ण निर्णय लेना था, अब पीछे हटने का कोई रास्ता नहीं था।`;
+        text = `गहरे सायों के बीच, ${cleanIdea} का एक बड़ा सच सामने आया जिसने सब कुछ बदल दिया। राह दो हिस्सों में बंट गई और एक निडर फैसला लेना पड़ा।`;
       } else if (language === 'Japanese') {
-        text = `影が伸び、突然の展開がすべてを変えました。${userIdea}の中心に立ち、重大な決断を下さなければなりませんでした。もう後戻りはできません。`;
+        text = `影の核心で、${cleanIdea}に関する予期せぬ真実が明かされ、すべてが変わりました。運命の分かれ道で、重大な選択を迫られます。`;
       } else {
-        text = `Shadows stretched across the ancient stone archway as a sudden turn shifted everything. Standing at the central pulse of ${userIdea}, a single decisive choice had to be made. There was no returning to the way things were.`;
+        text = `At the very center of the shadows, a breathtaking revelation regarding ${cleanIdea} changed the entire quest. The ground trembled as a single decisive choice had to be made. There was no returning to safety.`;
       }
-      imagePrompt = `Dramatic turning point scene, ancient architectural ruins, mysterious glowing light sources, high contrast cinematic lighting.`;
+      imagePrompt = `Dramatic pivotal climax scene, mysterious glowing ancient monument, dramatic rim lighting, intense contrast, cinematic low camera angle.`;
     } else {
       if (language === 'Spanish') {
-        text = `Avanzando más en el corazón de ${userIdea}, los detalles ocultos comenzaron a brillar bajo el crepúsculo. Cada momento revelaba una nueva capa del secreto.`;
+        text = `Explorando las profundidades de ${cleanIdea}, secretos dormidos despertaron bajo el resplandor de las estrellas. Cada paso traía una nueva maravilla y un peligro acechante.`;
       } else if (language === 'French') {
-        text = `En s'enfonçant au cœur de ${userIdea}, des détails cachés ont commencé à briller sous le crépuscule. Chaque instant révélait une nouvelle facette du secret.`;
+        text = `En explorant les profondeurs de ${cleanIdea}, des secrets enfouis se sont éveillés sous l'éclat des étoiles. Chaque pas apportait une merveille nouvelle et un frisson d'aventure.`;
       } else if (language === 'German') {
-        text = `Tiefer im Herzen von ${userIdea} begannen verborgene Geheimnisse zu leuchten. Jeder Augenblick enthüllte eine neue Ebene des Rätsels.`;
+        text = `Beim Erforschen der Tiefen von ${cleanIdea} erwachten verborgene Geheimnisse unter dem Sternenlicht. Jeder Schritt brachte neues Staunen und aufregende Energie.`;
       } else if (language === 'Hindi') {
-        text = `${userIdea} के रहस्यों में गहराई से उतरते ही नए संकेत सामने आने लगे और रोमांच बढ़ता गया।`;
+        text = `${cleanIdea} की गहराइयों में नए रहस्य तारों की छांव में सामने आने लगे। हर अगला पल एक नया रोमांच और जादू लेकर आ रहा था।`;
       } else if (language === 'Japanese') {
-        text = `${userIdea}の核心へと深く進むにつれ、隠された秘密が明かりの下で輝き始めました。刻一刻と謎が解き明かされていきます。`;
+        text = `${cleanIdea}の深部を進むにつれ、星明かりの下で眠っていた秘密が目覚めます。一歩ごとに新しい感動と期待が広上がります。`;
       } else {
-        text = `Pressing deeper into the heart of ${userIdea}, hidden details began to glow under the twilight. Each passing moment unveiled another layer of the secret, building toward an unstoppable climax.`;
+        text = `Navigating deep into the realm of ${cleanIdea}, forgotten secrets stirred beneath the starlight. Each breath brought fresh wonder and mounting tension, drawing closer to the heart of the magic.`;
       }
-      imagePrompt = `Exploring a mysterious vibrant setting, ethereal ambient glow, intricate environmental details, sense of curiosity and excitement.`;
+      imagePrompt = `Exploring a magical vibrant environment inspired by ${cleanIdea}, glowing particles, ethereal lighting, rich environment details, atmospheric depth.`;
     }
 
     pages.push({
