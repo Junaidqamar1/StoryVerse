@@ -154,10 +154,31 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const book = await Book.findOne({ _id: req.params.id, userId: req.user.id });
-    if (!book) {
+    const bookDoc = await Book.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!bookDoc) {
       return res.status(404).json({ error: 'Book not found' });
     }
+    const book = bookDoc.toObject();
+
+    // Sanitize image fields for legacy and new books
+    const sanitizeImg = (raw) => {
+      if (!raw || typeof raw !== 'string') return null;
+      if (raw.includes('http://') || raw.includes('https://')) {
+        return raw.substring(raw.indexOf('http'));
+      }
+      if (raw.startsWith('data:')) return raw;
+      return `data:image/jpeg;base64,${raw.replace(/^data:image\/\w+;base64,/, '')}`;
+    };
+
+    if (Array.isArray(book.pages)) {
+      book.pages = book.pages.map((p) => ({
+        ...p,
+        image: sanitizeImg(p.image),
+      }));
+    }
+
+    book.coverImage = sanitizeImg(book.coverImage) || (book.pages?.[0]?.image || null);
+
     res.json({ book });
   } catch (err) {
     console.error('Get book error:', err);

@@ -19,8 +19,18 @@ export default function BookCard({ book, onDelete }) {
     watercolor: 'bg-amber-50 text-amber-800 border-amber-200/80',
   };
 
-  const rawCover = book.coverImage || book.pages?.[0]?.image;
-  const coverSrc = getImageUrl(rawCover) || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbn674iMCijkvfkMueFK3ptfVbZgk9v5RzgPBs4SHXD5UVEoUatrtZzYZfDFVDVoNMED9vdDACnKRgnF6zBfwOfNj_533Gp3TJSSPbhgrsFeEZ6U1zGuJKKQZaq10julQWuh8mc9z3AyqHH93eMbe5RMuzxZ0Jq2OFbuqvSY-mpAV9-KbFB2LCl1TB8y3cnxhgzTNwJUi22ZRA6Yq7B4Laiugzmu7rc0rEaAPnnxAGStSa41u8tmh7';
+  const [imgHasError, setImgHasError] = useState(false);
+
+  const fallbackArtByStyle = {
+    comic: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
+    ink: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+    watercolor: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+    storybook: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80',
+  };
+
+  const defaultFallback = fallbackArtByStyle[book.style] || fallbackArtByStyle.storybook;
+  const rawCover = book.coverImage || (Array.isArray(book.pages) && book.pages[0]?.image);
+  const coverSrc = imgHasError ? defaultFallback : (getImageUrl(rawCover) || defaultFallback);
   const label = styleLabels[book.style] || book.style || 'Storybook';
   const badgeClass = styleBadgeStyles[book.style] || 'bg-stone-100 text-stone-700 border-stone-200';
 
@@ -41,7 +51,7 @@ export default function BookCard({ book, onDelete }) {
     e.stopPropagation();
     setIsDeleting(true);
     try {
-      await onDelete(book.id);
+      await onDelete(book.id || book._id);
     } finally {
       setIsDeleting(false);
       setIsConfirmingDelete(false);
@@ -51,12 +61,13 @@ export default function BookCard({ book, onDelete }) {
   return (
     <div className="group relative bg-white rounded-2xl sm:rounded-3xl border-2 border-white/95 shadow-[0_14px_34px_rgba(20,45,75,0.08)] hover:shadow-[0_22px_48px_rgba(20,45,75,0.14)] transition-all duration-300 overflow-hidden flex flex-col justify-between">
       {/* Clickable Card wrapper leading to /books/:id */}
-      <Link to={`/books/${book.id}`} className="block flex-1">
+      <Link to={`/books/${book.id || book._id}`} className="block flex-1">
         {/* Cover Image Container */}
         <div className="relative h-56 sm:h-64 w-full overflow-hidden bg-stone-100">
           <img
             src={coverSrc}
             alt={book.title}
+            onError={() => setImgHasError(true)}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />

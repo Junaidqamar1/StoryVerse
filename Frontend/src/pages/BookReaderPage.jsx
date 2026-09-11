@@ -69,7 +69,19 @@ export default function BookReaderPage() {
     caption: 'Story illustration',
   };
 
-  const currentImageSrc = getImageUrl(currentPage.image) || getImageUrl(book.coverImage);
+  const [imageErrorMap, setImageErrorMap] = useState({});
+
+  const fallbackArtByStyle = {
+    comic: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=800&q=80',
+    ink: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80',
+    watercolor: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80',
+    storybook: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=800&q=80',
+  };
+
+  const defaultFallback = fallbackArtByStyle[book.style] || fallbackArtByStyle.storybook;
+  const currentImageSrc = imageErrorMap[currentPageIndex]
+    ? defaultFallback
+    : (getImageUrl(currentPage.image) || getImageUrl(book.coverImage) || defaultFallback);
 
   const hasPrev = currentPageIndex > 0;
   const hasNext = currentPageIndex < totalPages - 1;
@@ -111,18 +123,14 @@ export default function BookReaderPage() {
           <div className="grid grid-cols-1 md:grid-cols-12 min-h-[480px]">
             {/* Left Column: Illustrated Art */}
             <div className="md:col-span-6 bg-stone-100 relative min-h-[320px] md:min-h-[520px] overflow-hidden flex items-center justify-center">
-              {currentImageSrc ? (
-                <img
-                  src={currentImageSrc}
-                  alt={currentPage.title || book.title}
-                  className="w-full h-full object-cover transition-all duration-300"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center p-6 text-stone-400 text-center">
-                  <ImageOff className="w-10 h-10 mb-2 opacity-50" />
-                  <span className="text-xs font-medium">Illustration pending</span>
-                </div>
-              )}
+              <img
+                src={currentImageSrc}
+                alt={currentPage.title || book.title}
+                onError={() => {
+                  setImageErrorMap((prev) => ({ ...prev, [currentPageIndex]: true }));
+                }}
+                className="w-full h-full object-cover transition-all duration-300"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60"></div>
               {currentPage.caption && (
                 <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-xs text-white/90 text-xs px-3 py-1.5 rounded-xl text-center">

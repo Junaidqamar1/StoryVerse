@@ -12,15 +12,17 @@ function buildImagePrompt({ styleFragment, characterDescription, pageImagePrompt
   ].join(' ');
 }
 
+function buildConcisePollinationsPrompt({ styleName, pageImagePrompt, characterDescription }) {
+  const shortStyle = styleName || 'storybook illustration';
+  const cleanScene = (pageImagePrompt || '').replace(/^Scene:\s*/i, '').trim();
+  const shortScene = cleanScene.slice(0, 120);
+  const shortChar = (characterDescription || '').slice(0, 80);
+  
+  return `${shortStyle}, ${shortScene}, ${shortChar}`.trim();
+}
+
 /**
- * Illustrates a whole book using Cloudflare Workers AI (FLUX.1 schnell).
- * Ported as-is from Junaid's story service.
- *
- * @param {Array<{pageNumber:number, text:string, imagePrompt:string}>} pages
- * @param {string} characterDescription - from storyGenerator, repeated on every page
- * @param {string} bookTitle - unused (kept for signature compatibility)
- * @param {string} styleKey - one of STYLE_PRESETS keys, e.g. "comic_color", "comic_bw", "storybook"
- * @returns {Promise<Array<{pageNumber:number, text:string, image:any|null, imageError:string|null}>>}
+ * Illustrates a whole book using Cloudflare Workers AI with Pollinations AI fallback.
  */
 async function generateSinglePageImage(page, characterDescription, style) {
   const fullPrompt = buildImagePrompt({
@@ -42,8 +44,38 @@ async function generateSinglePageImage(page, characterDescription, style) {
     console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber} (${cfErr.message}). Using Pollinations AI fallback...`);
   }
 
-  // Fallback to Pollinations AI image generation service
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=512&height=512&nologo=true`;
+  // Fallback to Pollinations AI image generation service with concise prompt
+  const concisePrompt = buildConcisePollinationsPrompt({
+    styleName: style.name || style.promptFragment?.slice(0, 40),
+    pageImagePrompt: page.imagePrompt,
+    characterDescription,
+  });
+
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=512&height=512&nologo=true`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const imgRes = await fetch(pollinationsUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (imgRes.ok) {
+      const arrayBuffer = await imgRes.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      if (buffer.length > 500) {
+        const base64Data = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+        console.log(`[imageGenerator] Successfully fetched Pollinations base64 image for page ${page.pageNumber}`);
+        return {
+          ...page,
+          image: base64Data,
+          imageError: null,
+        };
+      }
+    }
+  } catch (pErr) {
+    console.warn(`[imageGenerator] Direct Pollinations fetch skipped for page ${page.pageNumber} (${pErr.message}). Using direct URL fallback.`);
+  }
+
   return {
     ...page,
     image: pollinationsUrl,
