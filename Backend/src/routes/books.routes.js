@@ -34,52 +34,64 @@ router.post('/generate', async (req, res) => {
 
     // 3. Process pages and convert base64 image data to reliable image URLs & Data URIs
     const processedPages = storyResult.pages.map((page) => {
-      const rawImage = page.image && page.image.result 
-        ? page.image.result.image 
-        : (page.image ? page.image.base64 || page.image : null);
+      let rawImage = null;
 
-      if (rawImage && typeof rawImage === 'string') {
-        try {
-          const base64Clean = rawImage.replace(/^data:image\/\w+;base64,/, '');
-          
-          // Optionally save to physical disk if folder writable
-          try {
-            const fileName = `book-${Date.now()}-page-${page.pageNumber}.png`;
-            const filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, base64Clean, 'base64');
-          } catch (e) {
-            // disk write optional, data URI remains 100% functional
-          }
-
-          // Return Data URI string for instant, fault-tolerant display on Vercel/Frontend
-          return {
-            ...page,
-            image: `data:image/jpeg;base64,${base64Clean}`,
-            imageError: null
-          };
-        } catch (fileErr) {
-          console.error(`Failed to process image for page ${page.pageNumber}:`, fileErr);
+      if (page.image) {
+        if (typeof page.image === 'string') {
+          rawImage = page.image;
+        } else if (page.image.base64) {
+          rawImage = page.image.base64;
+        } else if (page.image.result && page.image.result.image) {
+          rawImage = page.image.result.image;
         }
       }
-      
-      const fallbackImage = page.image?.base64 
-        ? `data:image/jpeg;base64,${page.image.base64}` 
-        : (typeof page.image === 'string' ? page.image : null);
+
+      if (rawImage && typeof rawImage === 'string') {
+        // Fix any mangled string containing http/https
+        if (rawImage.includes('http://') || rawImage.includes('https://')) {
+          const httpIndex = rawImage.indexOf('http');
+          return {
+            ...page,
+            image: rawImage.substring(httpIndex),
+            imageError: null,
+          };
+        }
+
+        // If it already has a data: prefix
+        if (rawImage.startsWith('data:')) {
+          return {
+            ...page,
+            image: rawImage,
+            imageError: null,
+          };
+        }
+
+        // Clean raw base64 string
+        const cleanBase64 = rawImage.replace(/^data:image\/\w+;base64,/, '');
+        return {
+          ...page,
+          image: `data:image/jpeg;base64,${cleanBase64}`,
+          imageError: null,
+        };
+      }
 
       return {
         ...page,
-        image: fallbackImage,
-        imageError: page.imageError || null
+        image: null,
+        imageError: page.imageError || null,
       };
     });
 
-    // 4. Create the final book document with the file paths
+    const coverImage = processedPages[0]?.image || null;
+
+    // 4. Create the final book document with pages and cover image
     const book = await Book.create({
       userId: req.user.id,
       title: storyResult.title,
       characterDescription: storyResult.characterDescription,
       style: storyResult.style,
       pageCount: storyResult.pageCount,
+      coverImage,
       pages: processedPages, 
     });
 
@@ -89,6 +101,7 @@ router.post('/generate', async (req, res) => {
     res.status(502).json({ error: 'Failed to generate book', details: err.message });
   }
 });
+
 /**
  * GET /books/styles
  * Returns the available art style presets for the frontend's style picker.
@@ -105,14 +118,30 @@ router.get('/styles', (req, res) => {
 
 /**
  * GET /books
- * Lists the current user's books (summary only — no full page/image payload).
+ * Lists the current user's books with cover images.
  */
 router.get('/', async (req, res) => {
   try {
     const books = await Book.find({ userId: req.user.id })
-      .select('title characterDescription style pageCount createdAt')
+      .select('title characterDescription style pageCount coverImage pages createdAt')
       .sort({ createdAt: -1 });
-    res.json({ books });
+
+    const formattedBooks = books.map((b) => {
+      const obj = b.toObject();
+      const cover = obj.coverImage || (Array.isArray(obj.pages) && obj.pages[0]?.image) || null;
+      return {
+        id: obj._id,
+        _id: obj._id,
+        title: obj.title,
+        characterDescription: obj.characterDescription,
+        style: obj.style,
+        pageCount: obj.pageCount,
+        coverImage: cover,
+        createdAt: obj.createdAt,
+      };
+    });
+
+    res.json({ books: formattedBooks });
   } catch (err) {
     console.error('List books error:', err);
     res.status(500).json({ error: 'Failed to fetch books' });

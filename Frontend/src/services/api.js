@@ -32,6 +32,11 @@ export function getImageUrl(image) {
   if (!image) return null;
 
   if (typeof image === 'string') {
+    // Fix legacy mangled strings like "data:image/jpeg;base64,https://..."
+    if (image.includes('http://') || image.includes('https://')) {
+      const httpIndex = image.indexOf('http');
+      return image.substring(httpIndex);
+    }
     if (image.startsWith('data:') || image.startsWith('http://') || image.startsWith('https://')) {
       return image;
     }
@@ -39,27 +44,15 @@ export function getImageUrl(image) {
       return `${API_URL}${image}`;
     }
     // If it looks like raw base64 without prefix
-    if (image.length > 100 && !image.includes(' ')) {
+    if (image.length > 50 && !image.includes(' ')) {
       return `data:image/jpeg;base64,${image}`;
     }
     return image;
   }
 
   if (typeof image === 'object' && image !== null) {
-    if (image.url) {
-      if (image.url.startsWith('http://') || image.url.startsWith('https://') || image.url.startsWith('data:')) {
-        return image.url;
-      }
-      if (image.url.startsWith('/images/')) {
-        return `${API_URL}${image.url}`;
-      }
-      return image.url;
-    }
-    if (image.base64) {
-      return image.base64.startsWith('data:')
-        ? image.base64
-        : `data:image/jpeg;base64,${image.base64}`;
-    }
+    const target = image.url || image.base64 || image.image || image.src || (image.result && image.result.image) || null;
+    return getImageUrl(target);
   }
 
   return null;

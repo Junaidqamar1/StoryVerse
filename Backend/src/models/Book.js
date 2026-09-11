@@ -8,6 +8,7 @@ const bookSchema = new mongoose.Schema({
   characterDescription: { type: String, default: '' },
   style: { type: String, default: 'comic_color' }, // one of: comic_color, comic_bw, storybook
   pageCount: { type: Number, required: true },
+  coverImage: { type: String, default: '' },
   // Stored as-is from the story service response. Not normalized on purpose —
   // we only ever fetch whole books, never query inside individual pages.
   pages: { type: mongoose.Schema.Types.Mixed, required: true },
