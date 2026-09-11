@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getBookById, getImageUrl, createCraftStorySVG } from '../services/api';
+import { getBookById, getImageUrl, createCraftStorySVG, fetchStoryAudio } from '../services/api';
 import Navbar from '../components/Navbar';
 import FloatingClouds from '../components/FloatingClouds';
 import Button from '../components/Button';
-import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen, Share2, Sparkles, ImageOff } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen, Share2, Sparkles, ImageOff, Volume2, Play, Pause, Square, Loader2, Globe } from 'lucide-react';
 
 export default function BookReaderPage() {
   const { id } = useParams();
@@ -14,6 +14,28 @@ export default function BookReaderPage() {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [imageErrorMap, setImageErrorMap] = useState({});
+
+  // Audio narration state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const audioRef = useRef(null);
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setIsAudioLoading(false);
+  };
+
+  // Stop audio whenever page index changes
+  useEffect(() => {
+    stopAudio();
+  }, [currentPageIndex]);
 
   useEffect(() => {
     async function load() {
@@ -26,6 +48,7 @@ export default function BookReaderPage() {
       }
     }
     load();
+    return () => stopAudio();
   }, [id]);
 
   if (isLoading) {
@@ -86,8 +109,75 @@ export default function BookReaderPage() {
 
   const styleLabels = {
     comic: 'Color Comic',
+    comic_color: 'Color Comic',
+    comic_bw: 'Black & White Ink',
     ink: 'Black & White Ink',
+    storybook: 'Storybook Watercolor',
     watercolor: 'Storybook Watercolor',
+  };
+
+  const handleToggleNarration = async () => {
+    if (isPlaying) {
+      stopAudio();
+      return;
+    }
+
+    if (!currentPage.text) return;
+
+    setIsAudioLoading(true);
+
+    try {
+      // 1. Try ElevenLabs TTS server endpoint
+      const result = await fetchStoryAudio(currentPage.text);
+
+      if (result.audioUrl) {
+        const audio = new Audio(result.audioUrl);
+        audioRef.current = audio;
+        audio.onended = () => setIsPlaying(false);
+        audio.onerror = () => fallbackWebSpeech();
+        await audio.play();
+        setIsPlaying(true);
+        setIsAudioLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('[Narration] ElevenLabs failed, falling back to Web Speech:', err);
+    }
+
+    fallbackWebSpeech();
+  };
+
+  const fallbackWebSpeech = () => {
+    if (!('speechSynthesis' in window)) {
+      alert('Speech synthesis is not supported in your browser.');
+      setIsAudioLoading(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(currentPage.text);
+    
+    // Set speech language if available
+    const langMap = {
+      English: 'en-US',
+      Spanish: 'es-ES',
+      French: 'fr-FR',
+      German: 'de-DE',
+      Hindi: 'hi-IN',
+      Japanese: 'ja-JP',
+      Italian: 'it-IT',
+      Portuguese: 'pt-PT',
+    };
+    if (book.language && langMap[book.language]) {
+      utterance.lang = langMap[book.language];
+    }
+
+    utterance.onend = () => setIsPlaying(false);
+    utterance.onerror = () => setIsPlaying(false);
+
+    window.speechSynthesis.speak(utterance);
+    setIsPlaying(true);
+    setIsAudioLoading(false);
   };
 
   return (
@@ -107,6 +197,12 @@ export default function BookReaderPage() {
           </Link>
 
           <div className="flex items-center space-x-2">
+            {book.language && (
+              <span className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                <span>{book.language}</span>
+              </span>
+            )}
             <span className="text-xs bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-full border border-white/90 text-stone-700 font-medium">
               {styleLabels[book.style] || book.style}
             </span>
@@ -140,9 +236,41 @@ export default function BookReaderPage() {
             {/* Right Column: Narrative Storybook Prose */}
             <div className="md:col-span-6 p-6 sm:p-10 flex flex-col justify-between bg-white">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-2">
-                  Chapter {currentPage.pageNumber || currentPageIndex + 1}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                    Chapter {currentPage.pageNumber || currentPageIndex + 1}
+                  </div>
+
+                  {/* Voice Narration Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleNarration}
+                    disabled={isAudioLoading}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+                      isPlaying
+                        ? 'bg-amber-500 text-white animate-pulse'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-800'
+                    }`}
+                  >
+                    {isAudioLoading ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Loading voice...</span>
+                      </>
+                    ) : isPlaying ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-current" />
+                        <span>Stop Voice</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Read Out Loud</span>
+                      </>
+                    )}
+                  </button>
                 </div>
+
                 <h2 className="font-craft-serif text-2xl sm:text-3xl font-normal text-stone-900 mb-6 leading-tight">
                   {currentPage.title || book.title}
                 </h2>

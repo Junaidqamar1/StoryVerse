@@ -13,6 +13,9 @@ import {
   Sparkles,
   AlertCircle,
   RefreshCw,
+  Mic,
+  MicOff,
+  Globe,
 } from 'lucide-react';
 
 export default function CreateBookPage() {
@@ -32,6 +35,71 @@ export default function CreateBookPage() {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('comic_color');
   const [pageCount, setPageCount] = useState(3);
+  const [language, setLanguage] = useState('English');
+
+  // Speech-to-text state
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+    }
+  }, []);
+
+  const toggleSpeechRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      const langMap = {
+        English: 'en-US',
+        Spanish: 'es-ES',
+        French: 'fr-FR',
+        German: 'de-DE',
+        Hindi: 'hi-IN',
+        Japanese: 'ja-JP',
+        Italian: 'it-IT',
+        Portuguese: 'pt-PT',
+      };
+      recognition.lang = langMap[language] || 'en-US';
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript.trim()) {
+          setPrompt((prev) => (prev ? `${prev} ${transcript.trim()}` : transcript.trim()));
+        }
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
 
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -87,6 +155,7 @@ export default function CreateBookPage() {
         prompt: prompt.trim(),
         pageCount: Number(pageCount),
         style: style || 'comic_color',
+        language,
       });
 
       console.log('Book generated successfully:', newBook);
@@ -237,6 +306,45 @@ export default function CreateBookPage() {
             className="space-y-8"
           >
 
+            {/* Language Selector */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Story Language</span>
+                </label>
+                <span className="text-xs text-stone-400">
+                  Multilingual output & voice recognition
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { name: 'English', flag: '🇬🇧' },
+                  { name: 'Spanish', flag: '🇪🇸' },
+                  { name: 'French', flag: '🇫🇷' },
+                  { name: 'German', flag: '🇩🇪' },
+                  { name: 'Hindi', flag: '🇮🇳' },
+                  { name: 'Japanese', flag: '🇯🇵' },
+                  { name: 'Italian', flag: '🇮🇹' },
+                  { name: 'Portuguese', flag: '🇵🇹' },
+                ].map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => setLanguage(item.name)}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                      language === item.name
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                        : 'bg-white hover:bg-stone-50 text-stone-700 border-stone-200'
+                    }`}
+                  >
+                    <span>{item.flag}</span>
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Story prompt */}
             <div className="space-y-2">
 
@@ -252,9 +360,33 @@ export default function CreateBookPage() {
                   </span>
                 </label>
 
-                <span className="text-xs text-stone-400">
-                  Be as imaginative as you wish
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    title={isListening ? 'Stop recording voice' : 'Speak your prompt'}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                      isListening
+                        ? 'bg-rose-500 text-white animate-pulse shadow-sm'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff className="w-3.5 h-3.5" />
+                        <span>Listening...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Voice Prompt</span>
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs text-stone-400 hidden sm:inline">
+                    Speak or type
+                  </span>
+                </div>
 
               </div>
 

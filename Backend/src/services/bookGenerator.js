@@ -22,7 +22,7 @@ function withTimeout(promise, ms, message) {
  * Mirrors Junaid's original POST /api/generate-book route logic, just
  * called as a function instead of over HTTP.
  */
-async function generateBook(prompt, pageCount, style) {
+async function generateBook(prompt, pageCount, style, language = 'English') {
   const resolvedPageCount = Math.min(
     Math.max(Number(pageCount) || config.defaultPageCount, 4),
     12 // hard cap - keeps demo latency predictable
@@ -30,8 +30,8 @@ async function generateBook(prompt, pageCount, style) {
   const resolvedStyle = STYLE_PRESETS[style] ? style : DEFAULT_STYLE;
 
   const run = async () => {
-    console.log(`[generate-book] story: "${prompt}" (${resolvedPageCount} pages, style: ${resolvedStyle})`);
-    const story = await generateStory(prompt, resolvedPageCount);
+    console.log(`[generate-book] story: "${prompt}" (${resolvedPageCount} pages, style: ${resolvedStyle}, lang: ${language})`);
+    const story = await generateStory(prompt, resolvedPageCount, language);
 
     console.log(`[generate-book] illustrating "${story.title}"...`);
     const illustratedPages = await illustrateBook(
@@ -45,6 +45,7 @@ async function generateBook(prompt, pageCount, style) {
       title: story.title,
       characterDescription: story.characterDescription,
       style: resolvedStyle,
+      language,
       pageCount: illustratedPages.length,
       pages: illustratedPages,
     };

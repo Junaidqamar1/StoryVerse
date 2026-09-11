@@ -7,6 +7,7 @@ const bookSchema = new mongoose.Schema({
   // and still describes an old "styleDescription" field that no longer exists).
   characterDescription: { type: String, default: '' },
   style: { type: String, default: 'comic_color' }, // one of: comic_color, comic_bw, storybook
+  language: { type: String, default: 'English' },
   pageCount: { type: Number, required: true },
   coverImage: { type: String, default: '' },
   // Stored as-is from the story service response. Not normalized on purpose —

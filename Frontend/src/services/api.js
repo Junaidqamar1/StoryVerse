@@ -753,26 +753,21 @@ export async function generateBook({
   prompt,
   pageCount = 8,
   style = 'watercolor',
+  language = 'English',
 }) {
-  const token =
-    getToken();
+  const token = getToken();
 
   if (!token) {
-    throw new Error(
-      'You must be logged in to generate a book.'
-    );
+    throw new Error('You must be logged in to generate a book.');
   }
 
-  if (
-    !prompt ||
-    !prompt.trim()
-  ) {
+  if (!prompt || !prompt.trim()) {
     throw new Error('Prompt is required.');
   }
 
   const url = `${API_URL}/books/generate`;
 
-  console.log('GENERATE BOOK →', url);
+  console.log('GENERATE BOOK →', url, 'Language:', language);
 
   try {
     const response = await fetch(url, {
@@ -785,6 +780,7 @@ export async function generateBook({
         prompt: prompt.trim(),
         pageCount,
         style,
+        language,
       }),
     });
 
@@ -812,4 +808,39 @@ export async function generateBook({
     throw error;
   }
 }
+
+/**
+ * POST /books/tts
+ * Synthesizes voice audio for story text using ElevenLabs backend proxy or triggers browser fallback.
+ */
+export async function fetchStoryAudio(text) {
+  const token = getToken();
+  if (!token) throw new Error('Authentication required');
+
+  const url = `${API_URL}/books/tts`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const json = await response.json();
+    if (json.fallback) {
+      return { fallback: true };
+    }
+  }
+
+  if (response.ok && contentType.includes('audio')) {
+    const blob = await response.blob();
+    return { audioUrl: URL.createObjectURL(blob) };
+  }
+
+  return { fallback: true };
+}
+
 

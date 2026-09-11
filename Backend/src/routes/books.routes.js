@@ -4,6 +4,7 @@ const path = require('path');
 const Book = require('../models/Book');
 const bookGenerator = require('../services/bookGenerator');
 const { requireAuth } = require('../middleware/auth');
+const config = require('../config');
 
 const router = express.Router();
 
@@ -12,19 +13,19 @@ router.use(requireAuth);
 
 /**
  * POST /books/generate
- * body: { prompt: string, pageCount?: number (4-12), style?: string }
+ * body: { prompt: string, pageCount?: number (4-12), style?: string, language?: string }
  * Generates the book in-process (Gemini for text, Cloudflare for images),
  * saves the result with images downloaded to disk, returns the saved book.
  */
 router.post('/generate', async (req, res) => {
   try {
-    const { prompt, pageCount = 8, style } = req.body;
+    const { prompt, pageCount = 8, style, language = 'English' } = req.body;
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'prompt (string) is required' });
     }
 
     // 1. Run text and image generation
-    const storyResult = await bookGenerator.generateBook(prompt, pageCount, style);
+    const storyResult = await bookGenerator.generateBook(prompt, pageCount, style, language);
 
     // 2. Setup a local folder for the saved images
     const uploadDir = path.join(__dirname, '../public/images');
@@ -90,6 +91,7 @@ router.post('/generate', async (req, res) => {
       title: storyResult.title,
       characterDescription: storyResult.characterDescription,
       style: storyResult.style,
+      language: storyResult.language || language,
       pageCount: storyResult.pageCount,
       coverImage,
       pages: processedPages, 
@@ -99,6 +101,58 @@ router.post('/generate', async (req, res) => {
   } catch (err) {
     console.error('Book generation error:', err.message);
     res.status(502).json({ error: 'Failed to generate book', details: err.message });
+  }
+});
+
+/**
+ * POST /books/tts
+ * body: { text: string }
+ * Generates voice audio using ElevenLabs API if key is present,
+ * or indicates fallback to Web Speech API if key is not configured or fails.
+ */
+router.post('/tts', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'text is required' });
+    }
+
+    if (!config.elevenlabsApiKey) {
+      return res.json({ fallback: true, message: 'ElevenLabs API key not configured, fallback to Web Speech API' });
+    }
+
+    const voiceId = config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
+    const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+
+    const response = await fetch(elevenLabsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'xi-api-key': config.elevenlabsApiKey,
+        'Accept': 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn('[TTS] ElevenLabs API failed:', response.status, errText);
+      return res.json({ fallback: true, error: 'ElevenLabs request failed' });
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    return res.send(Buffer.from(audioBuffer));
+  } catch (err) {
+    console.warn('[TTS] Error invoking ElevenLabs TTS:', err.message);
+    return res.json({ fallback: true, error: err.message });
   }
 });
 

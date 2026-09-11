@@ -19,4 +19,8 @@ module.exports = {
   cloudflareApiToken: process.env.CLOUDFLARE_API_TOKEN,
   imageConcurrency: Number(process.env.IMAGE_CONCURRENCY || 3),
   defaultPageCount: Number(process.env.DEFAULT_PAGE_COUNT || 8),
+
+  // Voice narration (ElevenLabs TTS)
+  elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
+  elevenlabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM', // Rachel
 };
