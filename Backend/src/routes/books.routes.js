@@ -112,46 +112,92 @@ router.post('/generate', async (req, res) => {
  */
 router.post('/tts', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, language } = req.body;
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'text is required' });
     }
 
-    if (!config.elevenlabsApiKey) {
-      return res.json({ fallback: true, message: 'ElevenLabs API key not configured, fallback to Web Speech API' });
+    // 1. Try ElevenLabs API if key is present
+    if (config.elevenlabsApiKey) {
+      try {
+        const voiceId = config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
+        const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+
+        const response = await fetch(elevenLabsUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'xi-api-key': config.elevenlabsApiKey,
+            'Accept': 'audio/mpeg',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: {
+              stability: 0.45,
+              similarity_boost: 0.85,
+              style: 0.15,
+              use_speaker_boost: true,
+            },
+          }),
+        });
+
+        if (response.ok) {
+          const audioBuffer = await response.arrayBuffer();
+          res.set('Content-Type', 'audio/mpeg');
+          return res.send(Buffer.from(audioBuffer));
+        }
+        const errText = await response.text();
+        console.warn('[TTS] ElevenLabs API failed:', response.status, errText);
+      } catch (eErr) {
+        console.warn('[TTS] ElevenLabs request error:', eErr.message);
+      }
     }
 
-    const voiceId = config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
-    const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    // 2. Try Google Natural TTS as high-quality human voice provider
+    try {
+      const langCodeMap = {
+        English: 'en',
+        Spanish: 'es',
+        French: 'fr',
+        German: 'de',
+        Hindi: 'hi',
+        Bengali: 'bn',
+        Japanese: 'ja',
+        Italian: 'it',
+        Portuguese: 'pt',
+      };
+      const targetLang = (language && langCodeMap[language]) ? langCodeMap[language] : 'en';
 
-    const response = await fetch(elevenLabsUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': config.elevenlabsApiKey,
-        'Accept': 'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-        },
-      }),
-    });
+      const chunks = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const audioBuffers = [];
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.warn('[TTS] ElevenLabs API failed:', response.status, errText);
-      return res.json({ fallback: true, error: 'ElevenLabs request failed' });
+      for (const chunk of chunks) {
+        const trimmed = chunk.trim();
+        if (!trimmed) continue;
+        const gUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(trimmed)}&tl=${targetLang}&client=tw-ob`;
+        const gRes = await fetch(gUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        });
+        if (gRes.ok) {
+          const ab = await gRes.arrayBuffer();
+          audioBuffers.push(Buffer.from(ab));
+        }
+      }
+
+      if (audioBuffers.length > 0) {
+        const fullAudio = Buffer.concat(audioBuffers);
+        res.set('Content-Type', 'audio/mpeg');
+        return res.send(fullAudio);
+      }
+    } catch (gErr) {
+      console.warn('[TTS] Google TTS fallback error:', gErr.message);
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    res.set('Content-Type', 'audio/mpeg');
-    return res.send(Buffer.from(audioBuffer));
+    // 3. Fall back to browser Web Speech API
+    return res.json({ fallback: true, message: 'Server TTS unavailable, falling back to Web Speech API' });
   } catch (err) {
-    console.warn('[TTS] Error invoking ElevenLabs TTS:', err.message);
+    console.warn('[TTS] Error in TTS endpoint:', err.message);
     return res.json({ fallback: true, error: err.message });
   }
 });

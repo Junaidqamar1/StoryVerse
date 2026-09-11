@@ -813,7 +813,7 @@ export async function generateBook({
  * POST /books/tts
  * Synthesizes voice audio for story text using ElevenLabs backend proxy or triggers browser fallback.
  */
-export async function fetchStoryAudio(text) {
+export async function fetchStoryAudio(text, language = 'English') {
   const token = getToken();
   if (!token) throw new Error('Authentication required');
 
@@ -824,7 +824,7 @@ export async function fetchStoryAudio(text) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, language }),
   });
 
   const contentType = response.headers.get('content-type') || '';

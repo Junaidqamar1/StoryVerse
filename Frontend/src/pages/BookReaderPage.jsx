@@ -127,8 +127,8 @@ export default function BookReaderPage() {
     setIsAudioLoading(true);
 
     try {
-      // 1. Try ElevenLabs TTS server endpoint
-      const result = await fetchStoryAudio(currentPage.text);
+      // 1. Try server natural TTS endpoint (ElevenLabs / Google Natural voice)
+      const result = await fetchStoryAudio(currentPage.text, book.language);
 
       if (result.audioUrl) {
         const audio = new Audio(result.audioUrl);
@@ -141,7 +141,7 @@ export default function BookReaderPage() {
         return;
       }
     } catch (err) {
-      console.warn('[Narration] ElevenLabs failed, falling back to Web Speech:', err);
+      console.warn('[Narration] Server TTS failed, falling back to Web Speech:', err);
     }
 
     fallbackWebSpeech();
@@ -157,7 +157,7 @@ export default function BookReaderPage() {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(currentPage.text);
     
-    // Set speech language if available
+    // Target language mapping
     const langMap = {
       English: 'en-US',
       Spanish: 'es-ES',
@@ -169,9 +169,36 @@ export default function BookReaderPage() {
       Italian: 'it-IT',
       Portuguese: 'pt-PT',
     };
-    if (book.language && langMap[book.language]) {
-      utterance.lang = langMap[book.language];
+    const targetLang = (book.language && langMap[book.language]) ? langMap[book.language] : 'en-US';
+    utterance.lang = targetLang;
+
+    // Premium natural voice selection
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const baseLang = targetLang.split('-')[0].toLowerCase();
+      const matchingVoices = voices.filter(v => v.lang.toLowerCase().startsWith(baseLang));
+      const candidates = matchingVoices.length > 0 ? matchingVoices : voices;
+
+      const priorityKeywords = [
+        'natural', 'neural', 'google', 'enhanced', 'premium',
+        'online', 'aria', 'jenny', 'guy', 'samantha', 'karen', 'daniel'
+      ];
+      let selectedVoice = null;
+      for (const kw of priorityKeywords) {
+        selectedVoice = candidates.find(v => v.name.toLowerCase().includes(kw));
+        if (selectedVoice) break;
+      }
+      if (!selectedVoice) {
+        selectedVoice = candidates.find(v => v.default) || candidates[0];
+      }
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
     }
+
+    // Warm storytelling pace and pitch
+    utterance.rate = 0.92;
+    utterance.pitch = 0.98;
 
     utterance.onend = () => setIsPlaying(false);
     utterance.onerror = () => setIsPlaying(false);
