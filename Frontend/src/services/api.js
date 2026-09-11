@@ -4,7 +4,7 @@
  * auth token storage, and persistent local data.
  */
 
-export const API_URL = import.meta.env.VITE_API_URL || '';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://storyverse-jsq5.onrender.com';
 
 // Token and User LocalStorage Keys
 const TOKEN_KEY = 'storyverse_token';
