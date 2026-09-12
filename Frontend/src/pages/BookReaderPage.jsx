@@ -147,7 +147,17 @@ export default function BookReaderPage() {
     watercolor: 'Storybook Watercolor',
   };
 
-  // Filter voices matching current story language
+  // ElevenLabs Studio Character Voices
+  const elevenLabsVoices = [
+    { voiceURI: 'eleven_rachel', voiceId: '21m00Tcm4TlvDq8ikWAM', name: '✨ ElevenLabs: Rachel (Warm Storyteller)' },
+    { voiceURI: 'eleven_adam', voiceId: 'pNInz6obpgDQGcFmaJgB', name: '✨ ElevenLabs: Adam (Deep Male Narrator)' },
+    { voiceURI: 'eleven_bella', voiceId: 'EXAVITQu4vr4xnSDxMaL', name: '✨ ElevenLabs: Bella (Fairy Tale Soft)' },
+    { voiceURI: 'eleven_antoni', voiceId: 'ErXwobaYiN019PkySvjV', name: '✨ ElevenLabs: Antoni (Rich Resonant)' },
+    { voiceURI: 'eleven_elli', voiceId: 'MF3mGyEYCl7XYWbV9V6O', name: '✨ ElevenLabs: Elli (Friendly Kid Voice)' },
+    { voiceURI: 'eleven_josh', voiceId: 'TxGEqnHWrfWFTfGW9XjX', name: '✨ ElevenLabs: Josh (Soothing Male)' },
+  ];
+
+  // Filter browser voices matching current story language
   const langCodeMap = {
     English: 'en',
     Spanish: 'es',
@@ -164,25 +174,27 @@ export default function BookReaderPage() {
   const matchingLangVoices = availableVoices.filter((v) =>
     v.lang.toLowerCase().startsWith(targetBaseLang.toLowerCase())
   );
-  const displayVoices = matchingLangVoices.length > 0 ? matchingLangVoices : availableVoices;
+  const displayBrowserVoices = matchingLangVoices.length > 0 ? matchingLangVoices : availableVoices;
+
+  // Unified voice list containing ElevenLabs real voices + browser natural voices
+  const allVoiceOptions = [...elevenLabsVoices, ...displayBrowserVoices];
 
   // Auto-select initial priority voice when voices load
   useEffect(() => {
-    if (displayVoices.length > 0 && !selectedVoiceURI) {
-      const priorityKeywords = ['natural', 'neural', 'google', 'enhanced', 'premium', 'online', 'aria', 'jenny', 'guy', 'samantha', 'karen', 'daniel'];
-      let initial = null;
-      for (const kw of priorityKeywords) {
-        initial = displayVoices.find((v) => v.name.toLowerCase().includes(kw));
-        if (initial) break;
-      }
-      if (!initial) {
-        initial = displayVoices.find((v) => v.default) || displayVoices[0];
-      }
-      if (initial) {
-        setSelectedVoiceURI(initial.voiceURI);
-      }
+    if (!selectedVoiceURI) {
+      // Default to ElevenLabs Rachel or first available voice
+      setSelectedVoiceURI('eleven_rachel');
     }
-  }, [displayVoices, selectedVoiceURI]);
+  }, [selectedVoiceURI]);
+
+  const handleSetApiKeyPrompt = () => {
+    const current = localStorage.getItem('elevenlabs_api_key') || '';
+    const input = window.prompt('Enter your ElevenLabs API Key (from elevenlabs.io):', current);
+    if (input !== null) {
+      localStorage.setItem('elevenlabs_api_key', input.trim());
+      alert(input.trim() ? 'ElevenLabs API key saved!' : 'ElevenLabs API key cleared.');
+    }
+  };
 
   const handleToggleNarration = async () => {
     if (isPlaying) {
@@ -194,9 +206,13 @@ export default function BookReaderPage() {
 
     setIsAudioLoading(true);
 
+    const customKey = localStorage.getItem('elevenlabs_api_key') || '';
+    const selectedElevenOption = elevenLabsVoices.find((v) => v.voiceURI === selectedVoiceURI);
+    const targetVoiceId = selectedElevenOption ? selectedElevenOption.voiceId : null;
+
     try {
-      // 1. Try server natural TTS endpoint (ElevenLabs / Google Natural voice)
-      const result = await fetchStoryAudio(currentPage.text, book?.language);
+      // 1. Try ElevenLabs / Google Natural server TTS endpoint
+      const result = await fetchStoryAudio(currentPage.text, book?.language, targetVoiceId, customKey);
 
       if (result && result.audioUrl) {
         const audio = new Audio(result.audioUrl);
@@ -362,25 +378,44 @@ export default function BookReaderPage() {
 
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     {/* Voice Selector Dropdown */}
-                    {displayVoices.length > 0 && (
-                      <select
-                        value={selectedVoiceURI}
-                        onChange={(e) => {
-                          setSelectedVoiceURI(e.target.value);
-                          if (isPlaying) {
-                            stopAudio();
-                          }
-                        }}
-                        className="text-xs bg-stone-100 border border-stone-200 text-stone-800 font-medium px-2.5 py-1.5 rounded-full outline-none focus:ring-1 focus:ring-amber-500 max-w-[130px] sm:max-w-[160px] truncate cursor-pointer shadow-2xs"
-                        title="Choose narrator voice"
-                      >
-                        {displayVoices.map((voice) => (
+                    <select
+                      value={selectedVoiceURI}
+                      onChange={(e) => {
+                        setSelectedVoiceURI(e.target.value);
+                        if (isPlaying) {
+                          stopAudio();
+                        }
+                      }}
+                      className="text-xs bg-stone-100 border border-stone-200 text-stone-800 font-semibold px-2.5 py-1.5 rounded-full outline-none focus:ring-1 focus:ring-amber-500 max-w-[150px] sm:max-w-[190px] truncate cursor-pointer shadow-2xs"
+                      title="Choose narrator voice"
+                    >
+                      <optgroup label="ElevenLabs Authentic Studio Voices">
+                        {elevenLabsVoices.map((voice) => (
                           <option key={voice.voiceURI} value={voice.voiceURI}>
-                            🎙️ {voice.name}
+                            {voice.name}
                           </option>
                         ))}
-                      </select>
-                    )}
+                      </optgroup>
+                      {displayBrowserVoices.length > 0 && (
+                        <optgroup label="Browser Speech Voices">
+                          {displayBrowserVoices.map((voice) => (
+                            <option key={voice.voiceURI} value={voice.voiceURI}>
+                              🎙️ {voice.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+
+                    {/* ElevenLabs API Key Config Button */}
+                    <button
+                      type="button"
+                      onClick={handleSetApiKeyPrompt}
+                      className="text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold px-2 py-1.5 rounded-full transition-colors cursor-pointer border border-stone-200"
+                      title="Configure ElevenLabs API Key"
+                    >
+                      🔑 Key
+                    </button>
 
                     {/* Speed Selector */}
                     <div className="inline-flex bg-stone-100 p-0.5 rounded-full text-[10px] font-semibold text-stone-600">

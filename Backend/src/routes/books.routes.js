@@ -112,31 +112,35 @@ router.post('/generate', async (req, res) => {
  */
 router.post('/tts', async (req, res) => {
   try {
-    const { text, language } = req.body;
+    const { text, language, voiceId, apiKey } = req.body;
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'text is required' });
     }
 
+    const activeApiKey = apiKey || config.elevenlabsApiKey;
+
     // 1. Try ElevenLabs API if key is present
-    if (config.elevenlabsApiKey) {
+    if (activeApiKey) {
       try {
-        const voiceId = config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
-        const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+        const targetVoiceId = voiceId || config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
+        const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`;
+
+        console.log(`[TTS] Fetching ElevenLabs studio voice: ${targetVoiceId}`);
 
         const response = await fetch(elevenLabsUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'xi-api-key': config.elevenlabsApiKey,
+            'xi-api-key': activeApiKey,
             'Accept': 'audio/mpeg',
           },
           body: JSON.stringify({
             text,
             model_id: 'eleven_multilingual_v2',
             voice_settings: {
-              stability: 0.45,
+              stability: 0.40,
               similarity_boost: 0.85,
-              style: 0.15,
+              style: 0.20,
               use_speaker_boost: true,
             },
           }),
@@ -148,7 +152,7 @@ router.post('/tts', async (req, res) => {
           return res.send(Buffer.from(audioBuffer));
         }
         const errText = await response.text();
-        console.warn('[TTS] ElevenLabs API failed:', response.status, errText);
+        console.warn('[TTS] ElevenLabs API call failed:', response.status, errText);
       } catch (eErr) {
         console.warn('[TTS] ElevenLabs request error:', eErr.message);
       }
