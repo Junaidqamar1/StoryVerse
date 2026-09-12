@@ -74,6 +74,9 @@ export default function BookReaderPage() {
       try {
         const found = await getBookById(id);
         setBook(found);
+      } catch (err) {
+        console.error('Failed to load book:', err);
+        setBook(null);
       } finally {
         setIsLoading(false);
       }
@@ -172,7 +175,7 @@ export default function BookReaderPage() {
   const targetBaseLang = (book?.language && langCodeMap[book.language]) ? langCodeMap[book.language] : 'en';
 
   const matchingLangVoices = availableVoices.filter((v) =>
-    v.lang.toLowerCase().startsWith(targetBaseLang.toLowerCase())
+    v && typeof v.lang === 'string' && v.lang.toLowerCase().startsWith(targetBaseLang.toLowerCase())
   );
   const displayBrowserVoices = matchingLangVoices.length > 0 ? matchingLangVoices : availableVoices;
 

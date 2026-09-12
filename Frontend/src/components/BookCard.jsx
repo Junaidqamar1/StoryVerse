@@ -104,7 +104,7 @@ export default function BookCard({ book, onDelete }) {
       {/* Card Footer: Read action & Delete Option */}
       <div className="px-5 pb-5 pt-1 flex items-center justify-between border-t border-stone-100/80">
         <Link
-          to={`/books/${book.id}`}
+          to={`/books/${book.id || book._id}`}
           className="text-xs font-semibold text-stone-800 hover:text-black group-hover:underline inline-flex items-center space-x-1"
         >
           <span>Read book</span>
