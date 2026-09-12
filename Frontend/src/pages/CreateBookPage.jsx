@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { generateBook } from '../services/api';
+import { generateBook, pingBackend } from '../services/api';
 import Navbar from '../components/Navbar';
 import FloatingClouds from '../components/FloatingClouds';
 import StylePicker from '../components/StylePicker';
@@ -22,8 +22,9 @@ export default function CreateBookPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
 
-  // Protect route
+  // Protect route & pre-warm Render backend free-tier instance
   useEffect(() => {
+    pingBackend();
     const storedToken = localStorage.getItem('storyverse_token');
 
     if (!token && !storedToken) {

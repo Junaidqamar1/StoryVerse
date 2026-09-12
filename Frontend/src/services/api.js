@@ -25,6 +25,33 @@ export function pingBackend() {
 pingBackend();
 
 /**
+ * Robust fetch wrapper with retries to handle Render free tier cold-starts (502 / network drops).
+ */
+export async function fetchWithRetry(url, options = {}, retries = 2) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        if (attempt < retries) {
+          console.warn(`[API] Server status ${response.status} on attempt ${attempt + 1}, retrying in 2s...`);
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+      }
+      return response;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        console.warn(`[API] Fetch error on attempt ${attempt + 1}: ${err.message}. Retrying in 2.5s...`);
+        await new Promise((r) => setTimeout(r, 2500));
+      }
+    }
+  }
+  throw lastErr || new Error('Network request failed. Please ensure backend is active.');
+}
+
+/**
  * Universal image URL extractor.
  * Converts strings, base64 objects, and relative URLs into reliable image src strings.
  */
@@ -581,7 +608,7 @@ export async function getBookById(id) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'GET',
       headers,
     });
@@ -754,7 +781,7 @@ export async function generateBook({
   console.log('GENERATE BOOK →', url, 'Language:', language);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
