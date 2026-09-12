@@ -11,6 +11,8 @@ const {
   NARRATION_VOICE_SETTINGS,
 } = require('../story/narration');
 
+const router = express.Router();
+
 // Public route: GET /books/:id (Allows viewing & sharing books via direct link without login)
 router.get('/:id', async (req, res) => {
   try {
