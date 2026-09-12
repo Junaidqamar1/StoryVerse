@@ -11,9 +11,42 @@ const {
   NARRATION_VOICE_SETTINGS,
 } = require('../story/narration');
 
-const router = express.Router();
+// Public route: GET /books/:id (Allows viewing & sharing books via direct link without login)
+router.get('/:id', async (req, res) => {
+  try {
+    const bookDoc = await Book.findById(req.params.id);
+    if (!bookDoc) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    const book = bookDoc.toObject();
 
-// All book routes require a logged-in user.
+    // Sanitize image fields for legacy and new books
+    const sanitizeImg = (raw) => {
+      if (!raw || typeof raw !== 'string') return null;
+      if (raw.includes('http://') || raw.includes('https://')) {
+        return raw.substring(raw.indexOf('http'));
+      }
+      if (raw.startsWith('data:')) return raw;
+      return `data:image/jpeg;base64,${raw.replace(/^data:image\/\w+;base64,/, '')}`;
+    };
+
+    if (Array.isArray(book.pages)) {
+      book.pages = book.pages.map((p) => ({
+        ...p,
+        image: sanitizeImg(p.image),
+      }));
+    }
+
+    book.coverImage = sanitizeImg(book.coverImage) || (book.pages?.[0]?.image || null);
+
+    res.json({ book });
+  } catch (err) {
+    console.error('Get book error:', err);
+    res.status(500).json({ error: 'Failed to fetch book' });
+  }
+});
+
+// All subsequent routes require a logged-in user (generation, listing user shelf, deleting)
 router.use(requireAuth);
 
 /**
@@ -265,43 +298,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * GET /books/:id
- * Full book, including all pages and images. Ownership-checked.
- */
-router.get('/:id', async (req, res) => {
-  try {
-    const bookDoc = await Book.findOne({ _id: req.params.id, userId: req.user.id });
-    if (!bookDoc) {
-      return res.status(404).json({ error: 'Book not found' });
-    }
-    const book = bookDoc.toObject();
 
-    // Sanitize image fields for legacy and new books
-    const sanitizeImg = (raw) => {
-      if (!raw || typeof raw !== 'string') return null;
-      if (raw.includes('http://') || raw.includes('https://')) {
-        return raw.substring(raw.indexOf('http'));
-      }
-      if (raw.startsWith('data:')) return raw;
-      return `data:image/jpeg;base64,${raw.replace(/^data:image\/\w+;base64,/, '')}`;
-    };
-
-    if (Array.isArray(book.pages)) {
-      book.pages = book.pages.map((p) => ({
-        ...p,
-        image: sanitizeImg(p.image),
-      }));
-    }
-
-    book.coverImage = sanitizeImg(book.coverImage) || (book.pages?.[0]?.image || null);
-
-    res.json({ book });
-  } catch (err) {
-    console.error('Get book error:', err);
-    res.status(500).json({ error: 'Failed to fetch book' });
-  }
-});
 
 /**
  * DELETE /books/:id

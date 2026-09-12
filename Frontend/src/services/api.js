@@ -565,42 +565,26 @@ export async function getBooks() {
  * GET /books/:id
  */
 
-export async function getBookById(
-  id
-) {
+export async function getBookById(id) {
   if (!id) {
-    throw new Error(
-      'Book ID is required.'
-    );
+    throw new Error('Book ID is required.');
   }
 
-  const token =
-    getToken();
+  const token = getToken();
+  const url = `${API_URL}/books/${id}`;
 
-  if (!token) {
-    throw new Error(
-      'You must be logged in to load this book.'
-    );
-  }
-
-  const url =
-    `${API_URL}/books/${id}`;
-
-  console.log(
-    'GET BOOK →',
-    url
-  );
+  console.log('GET BOOK →', url);
 
   try {
-    const response =
-      await fetch(url, {
-        method: 'GET',
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      });
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
 
     const contentType =
       response.headers.get(
