@@ -89,7 +89,7 @@ export function createCraftStorySVG({ title, pageNumber = 1, style, promptText }
     <text x="300" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="${textColor}" opacity="0.85">"${cleanSnippet}..."</text>
   </svg>`;
 
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 // ======================================================

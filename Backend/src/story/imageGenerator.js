@@ -12,12 +12,11 @@ function buildImagePrompt({ style, characterDescription, pageImagePrompt }) {
 }
 
 function buildConcisePollinationsPrompt({ style, pageImagePrompt, characterDescription, pageNumber }) {
-  const styleStr = style?.promptFragment ? style.promptFragment.slice(0, 90) : '3D cinematic animation, Octane render';
-  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').replace(/\.$/, '').trim();
-  const shortScene = cleanScene.slice(0, 160);
-  const shortChar = (characterDescription || '').replace(/\.$/, '').slice(0, 100);
+  const cleanChar = (characterDescription || '').replace(/[<>&'"]/g, '').replace(/\.$/, '').trim().slice(0, 70);
+  const cleanScene = (pageImagePrompt || '').replace(/^Scene Details:\s*|^Scene:\s*/i, '').replace(/[<>&'"]/g, '').replace(/\.$/, '').trim().slice(0, 90);
+  const styleStr = style?.promptFragment ? style.promptFragment.replace(/[<>&'"]/g, '').slice(0, 50) : 'storybook 3D animation';
 
-  return `${shortChar}, ${shortScene}, ${styleStr}, 8k resolution, cinematic lighting, masterpiece illustration`.trim();
+  return `${cleanChar}, ${cleanScene}, ${styleStr}, masterpiece illustration`.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -95,7 +94,7 @@ function createStoryCraftSVG({ pageNumber, text, imagePrompt, styleKey, bookTitl
     <text x="400" y="675" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="${accentGrad1}" letter-spacing="3" opacity="0.8">STORYVERSE STUDIO ARTWORK</text>
   </svg>`;
 
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 async function fetchPollinationsImage(prompt, model, seed) {
