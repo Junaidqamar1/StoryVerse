@@ -14,10 +14,12 @@ async function callGeminiWithFallback(body, { retries = 4 } = {}) {
     );
   }
 
-  // Active supported Gemini model
+  // Active supported Gemini models
   const candidateModels = [
-    config.textModel || 'gemini-3.6-flash',
-    'gemini-3.6-flash',
+    config.textModel || 'gemini-1.5-flash',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-pro',
   ];
 
   let lastError;

@@ -11,7 +11,7 @@ module.exports = {
   grokApiKey: process.env.GROK_API_KEY || process.env.XAI_API_KEY,
   grokModel: process.env.GROK_MODEL || 'grok-2-latest',
   geminiApiKey: process.env.GEMINI_API_KEY,
-  textModel: process.env.TEXT_MODEL || 'gemini-3.6-flash',
+  textModel: process.env.TEXT_MODEL || 'gemini-1.5-flash',
 
   // Image generation (Cloudflare Workers AI - FLUX.1 schnell)
   cloudflareAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
