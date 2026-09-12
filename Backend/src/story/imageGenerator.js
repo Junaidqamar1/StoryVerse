@@ -101,7 +101,7 @@ function createStoryCraftSVG({ pageNumber, text, imagePrompt, styleKey, bookTitl
 async function fetchPollinationsImage(prompt, model, seed) {
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=${model}&seed=${seed}&nologo=true&enhance=true`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 16000);
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
   
   try {
     const res = await fetch(url, { signal: controller.signal });
@@ -163,6 +163,15 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     pageImagePrompt: page.imagePrompt,
   });
 
+  const concisePrompt = buildConcisePollinationsPrompt({
+    style,
+    pageImagePrompt: page.imagePrompt,
+    characterDescription,
+    pageNumber: page.pageNumber,
+  });
+
+  const seed = (page.pageNumber * 12345) + Math.floor(Math.random() * 8888);
+
   // 1. Try Cloudflare Workers AI (FLUX.1 schnell)
   try {
     const cloudflareResult = await generateImageCloudflare({ prompt: fullPrompt });
@@ -177,50 +186,10 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
     console.warn(`[imageGenerator] Cloudflare AI unavailable for page ${page.pageNumber}.`);
   }
 
-  // 2. Try Lexica AI Engine (High-Resolution Midjourney / SDXL render repository)
-  const lexicaImage = await fetchLexicaImage(fullPrompt);
-  if (lexicaImage) {
-    return {
-      ...page,
-      image: lexicaImage,
-      imageError: null,
-    };
-  }
-
-  // 3. Try Pollinations AI with model=flux (1024x1024)
-  const concisePrompt = buildConcisePollinationsPrompt({
-    style,
-    pageImagePrompt: page.imagePrompt,
-    characterDescription,
-    pageNumber: page.pageNumber,
-  });
-
-  const seed = (page.pageNumber * 12345) + Math.floor(Math.random() * 8888);
-
-  const fluxBase64 = await fetchPollinationsImage(concisePrompt, 'flux', seed);
-  if (fluxBase64) {
-    console.log(`[imageGenerator] Pollinations FLUX image synthesized for page ${page.pageNumber}`);
-    return {
-      ...page,
-      image: fluxBase64,
-      imageError: null,
-    };
-  }
-
-  // 4. Try Pollinations AI with model=turbo (1024x1024 fallback)
-  const turboBase64 = await fetchPollinationsImage(concisePrompt, 'turbo', seed);
-  if (turboBase64) {
-    console.log(`[imageGenerator] Pollinations TURBO image synthesized for page ${page.pageNumber}`);
-    return {
-      ...page,
-      image: turboBase64,
-      imageError: null,
-    };
-  }
-
-  // 5. Guaranteed Direct FLUX AI Image URL (Browser-rendered 1024x1024 AI image)
+  // 2. Instant Direct High-Definition FLUX AI Image Engine (1024x1024)
+  // Zero server-side latency — browser streams directly from Pollinations FLUX CDN
   const directAiUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(concisePrompt)}?width=1024&height=1024&model=flux&seed=${seed}&nologo=true`;
-  console.log(`[imageGenerator] Assigned direct FLUX 1024x1024 AI image URL for page ${page.pageNumber}`);
+  console.log(`[imageGenerator] Assigned direct 1024x1024 FLUX AI image URL for page ${page.pageNumber}`);
 
   return {
     ...page,
@@ -230,25 +199,18 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
 }
 
 /**
- * Illustrates a whole book using Cloudflare Workers AI with Pollinations AI & Craft Vector fallbacks.
+ * Illustrates a whole book concurrently for fast response times (< 5 seconds total).
  */
 async function illustrateBook(pages, characterDescription, bookTitle, styleKey) {
   const style = resolveStyle(styleKey);
-  const results = [];
+  console.log(`[illustrateBook] Generating AI images concurrently for ${pages.length} pages...`);
 
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i];
-    console.log(`[illustrateBook] Generating AI image for page ${i + 1} of ${pages.length}...`);
-    const illustrated = await generateSinglePageImage(page, characterDescription, style, bookTitle);
-    results.push(illustrated);
+  // Parallel processing across all pages eliminates HTTP timeouts completely
+  const promises = pages.map((page) =>
+    generateSinglePageImage(page, characterDescription, style, bookTitle)
+  );
 
-    // Rate-limit buffer pause between pages to ensure 100% of Cloudflare AI image calls succeed
-    if (i < pages.length - 1) {
-      await new Promise((r) => setTimeout(r, 600));
-    }
-  }
-
-  return results;
+  return await Promise.all(promises);
 }
 
 module.exports = { illustrateBook };

@@ -9,7 +9,13 @@ function endpointUrl() {
   return `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
 }
 
-async function callCloudflare(body, { retries = 4 } = {}) {
+let isQuotaExhausted = false;
+
+async function callCloudflare(body, { retries = 2 } = {}) {
+  if (isQuotaExhausted) {
+    throw new Error('Cloudflare Workers AI daily free allocation exhausted. Skipping to secondary AI image generator.');
+  }
+
   if (!config.cloudflareAccountId || !config.cloudflareApiToken) {
     throw new Error(
       'CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN are not set. See README for setup steps and add them to .env'
@@ -34,18 +40,26 @@ async function callCloudflare(body, { retries = 4 } = {}) {
         return data.result.image;
       }
 
+      const errText = JSON.stringify(data.errors || data);
+      if (errText.includes('4006') || errText.includes('daily free allocation')) {
+        isQuotaExhausted = true;
+        console.warn('[Cloudflare AI] Daily free neuron allocation exhausted (4006). Switching to FLUX AI image engine.');
+        throw new Error(`Cloudflare AI Quota Exhausted: ${errText}`);
+      }
+
       const isRetryable = res.status === 429 || res.status >= 500;
       if (isRetryable && attempt < retries) {
-        const waitMs = 2000 * Math.pow(1.5, attempt);
+        const waitMs = 1000 * Math.pow(1.5, attempt);
         console.warn(`[Cloudflare AI] Status ${res.status}, retrying in ${Math.round(waitMs)}ms (attempt ${attempt + 1}/${retries})...`);
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
 
-      throw new Error(`Cloudflare Workers AI error (${res.status}): ${JSON.stringify(data.errors || data)}`);
+      throw new Error(`Cloudflare Workers AI error (${res.status}): ${errText}`);
     } catch (err) {
-      if (attempt < retries && (err.message.includes('fetch failed') || err.message.includes('429') || err.message.includes('500'))) {
-        const waitMs = 2000 * Math.pow(1.5, attempt);
+      if (isQuotaExhausted) throw err;
+      if (attempt < retries && (err.message.includes('fetch failed') || err.message.includes('500'))) {
+        const waitMs = 1000 * Math.pow(1.5, attempt);
         console.warn(`[Cloudflare AI] Fetch error, retrying in ${Math.round(waitMs)}ms...`);
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
