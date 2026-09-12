@@ -20,7 +20,7 @@ const STORY_SCHEMA = {
           text: {
             type: 'STRING',
             description:
-              '2-3 short, easy sentences a child could understand when read aloud. Everyday words. One clear action or feeling per page.',
+              'REQUIRED: 4 to 6 short, easy sentences (at least 45-70 words total) a child could understand when read aloud. Everyday words. Describe the scene, what the character does, what they say or feel, and what happens next. NEVER return a single sentence or a single short line — a one-line page is treated as invalid output.',
           },
           imagePrompt: {
             type: 'STRING',
@@ -64,6 +64,13 @@ WRITE LIKE A BEDTIME BOOK:
 - Do NOT start with "Once upon a time" unless the user asked for a fairy tale.
 - Title: 2 to 5 simple words. Example: "Milo Wants to Fly", "The Lost Blue Kite".
 
+PAGE LENGTH — THIS IS A HARD REQUIREMENT:
+- Every single page's "text" MUST contain 4 to 6 complete sentences, roughly 45-70 words total.
+- A page with only one sentence or one short line is WRONG and will be rejected. Never do this.
+- Use the extra sentences to set the scene (where they are, what it looks like), show the action, add a line of dialogue, and show how the character feels or what they decide next.
+- Example of an ACCEPTABLE page length (do not copy the content, just the length/structure):
+  "Mira stood at the edge of the old garden gate. Rain tapped softly on her yellow raincoat. She had been walking for a long time, and her boots were muddy. 'I don't think I can do this alone,' she whispered, looking at the tall fence ahead. Just then, she heard a small bark behind her."
+
 CHARACTER:
 - Invent ONE friendly main character with a simple name.
 - In "characterDescription", give a fixed look in English: age, hair, clothes, one accessory. Keep it the same on every page.
@@ -74,7 +81,7 @@ IMAGES:
 
 FORMAT PER PAGE:
 - "pageNumber": 1 to ${pageCount}
-- "text": 2-3 short sentences in ${language}
+- "text": 4-6 short sentences (45-70 words) in ${language} — never a single line
 - "imagePrompt": English visual scene
 
 Return ONLY valid JSON matching the schema.`;
@@ -246,6 +253,48 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
   };
 }
 
+// Minimum bar a page's "text" must clear to be considered a real story page
+// rather than a truncated one-liner. Tuned to the "4-6 sentences / 45-70
+// words" instruction above, but kept a bit lenient since word count varies
+// by language.
+const MIN_WORDS_PER_PAGE = 25;
+const MIN_SENTENCES_PER_PAGE = 2;
+
+function countSentences(text) {
+  return (text.match(/[.!?。！？](?:\s|$)/g) || []).length || (text.trim() ? 1 : 0);
+}
+
+function countWords(text) {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * Rejects stories where pages are suspiciously short (e.g. a model ignoring
+ * the length instructions and returning a single line per page). Used to
+ * decide whether to trust a Grok/Gemini result or fall through to the next
+ * provider / the guaranteed-length fallback story.
+ */
+function isStoryLongEnough(story, pageCount) {
+  if (!story || !Array.isArray(story.pages) || story.pages.length === 0) return false;
+
+  // Don't be overly strict about exact page count (models sometimes merge
+  // or split a page), but every page that IS present must be long enough.
+  const shortPages = story.pages.filter((p) => {
+    const text = (p && typeof p.text === 'string') ? p.text : '';
+    return countWords(text) < MIN_WORDS_PER_PAGE || countSentences(text) < MIN_SENTENCES_PER_PAGE;
+  });
+
+  if (shortPages.length > 0) {
+    console.warn(
+      `[storyGenerator] Rejecting story: ${shortPages.length}/${story.pages.length} page(s) are too short ` +
+      `(need >= ${MIN_WORDS_PER_PAGE} words / >= ${MIN_SENTENCES_PER_PAGE} sentences each).`
+    );
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Generates the full story (all pages) via Gemini call with seamless fallback.
  * Returns { title, characterDescription, pages: [{pageNumber, text, imagePrompt}] }
@@ -257,7 +306,7 @@ async function generateStory(userIdea, pageCount, language = 'English') {
   try {
     const rawGrok = await callGrok(prompt);
     const story = typeof rawGrok === 'string' ? JSON.parse(rawGrok) : rawGrok;
-    if (story && Array.isArray(story.pages) && story.pages.length > 0) {
+    if (isStoryLongEnough(story, pageCount)) {
       console.log(`[storyGenerator] Grok AI generated story in ${language}: "${story.title}" (${story.pages.length} pages)`);
       return story;
     }
@@ -270,15 +319,26 @@ async function generateStory(userIdea, pageCount, language = 'English') {
     const raw = await callGemini({ prompt, responseSchema: STORY_SCHEMA });
     const story = JSON.parse(raw);
 
-    if (Array.isArray(story.pages) && story.pages.length > 0) {
+    if (isStoryLongEnough(story, pageCount)) {
       console.log(`[storyGenerator] Gemini generated story in ${language}: "${story.title}" (${story.pages.length} pages)`);
       return story;
+    }
+
+    // Story parsed fine but pages were too short — retry once with an even
+    // more forceful reminder appended, before giving up on the AI provider.
+    const retryPrompt = `${prompt}\n\nREMINDER: your previous attempt returned pages that were far too short. Every "text" field must be 4-6 full sentences (45-70 words). Do not return single-sentence pages.`;
+    const retryRaw = await callGemini({ prompt: retryPrompt, responseSchema: STORY_SCHEMA });
+    const retryStory = JSON.parse(retryRaw);
+    if (isStoryLongEnough(retryStory, pageCount)) {
+      console.log(`[storyGenerator] Gemini retry produced a sufficiently long story in ${language}: "${retryStory.title}"`);
+      return retryStory;
     }
   } catch (err) {
     console.warn(`[storyGenerator] Gemini API unavailable (${err.message}). Using Creative Story Engine fallback for ${language}.`);
   }
 
-  // 3. Creative Multilingual Story Engine fallback
+  // 3. Creative Multilingual Story Engine fallback (guaranteed multi-sentence pages)
+  console.warn('[storyGenerator] Falling back to Creative Story Engine due to short/invalid AI output.');
   return generateCreativeFallbackStory(userIdea, pageCount, language);
 }
 

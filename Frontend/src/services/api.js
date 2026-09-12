@@ -1,4 +1,3 @@
-
 /**
  * StoryVerse API Service
  * Real backend communication only.
@@ -17,106 +16,293 @@ export const API_URL =
 
 console.log('StoryVerse API:', API_URL);
 
-// Warm-up ping to wake up Render free tier backend on initial site load
+// ======================================================
+// RENDER BACKEND WARM-UP
+// ======================================================
+
+// Wake up Render free-tier backend
 export function pingBackend() {
   fetch(`${API_URL}/health`).catch(() => {});
 }
 
 pingBackend();
 
-/**
- * Robust fetch wrapper with retries to handle Render free tier cold-starts (502 / network drops).
- */
-export async function fetchWithRetry(url, options = {}, retries = 2) {
+// ======================================================
+// ROBUST FETCH WITH RETRIES
+// ======================================================
+
+export async function fetchWithRetry(
+  url,
+  options = {},
+  retries = 2
+) {
   let lastErr;
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const response = await fetch(url, options);
-      if (response.status === 502 || response.status === 503 || response.status === 504) {
+
+      if (
+        response.status === 502 ||
+        response.status === 503 ||
+        response.status === 504
+      ) {
         if (attempt < retries) {
-          console.warn(`[API] Server status ${response.status} on attempt ${attempt + 1}, retrying in 2s...`);
-          await new Promise((r) => setTimeout(r, 2000));
+          console.warn(
+            `[API] Server status ${response.status} on attempt ${
+              attempt + 1
+            }, retrying in 2s...`
+          );
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 2000)
+          );
+
           continue;
         }
       }
+
       return response;
     } catch (err) {
       lastErr = err;
+
       if (attempt < retries) {
-        console.warn(`[API] Fetch error on attempt ${attempt + 1}: ${err.message}. Retrying in 2.5s...`);
-        await new Promise((r) => setTimeout(r, 2500));
+        console.warn(
+          `[API] Fetch error on attempt ${
+            attempt + 1
+          }: ${err.message}. Retrying in 2.5s...`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2500)
+        );
       }
     }
   }
-  throw lastErr || new Error('Network request failed. Please ensure backend is active.');
+
+  throw (
+    lastErr ||
+    new Error(
+      'Network request failed. Please ensure backend is active.'
+    )
+  );
 }
 
-/**
- * Universal image URL extractor.
- * Converts strings, base64 objects, and relative URLs into reliable image src strings.
- */
+// ======================================================
+// IMAGE URL HELPER
+// ======================================================
+
 export function getImageUrl(image) {
   if (!image) return null;
 
   if (typeof image === 'string') {
-    // Fix legacy mangled strings like "data:image/jpeg;base64,https://..."
-    if (image.includes('http://') || image.includes('https://')) {
+    // Fix legacy mangled strings
+    if (
+      image.includes('http://') ||
+      image.includes('https://')
+    ) {
       const httpIndex = image.indexOf('http');
       return image.substring(httpIndex);
     }
-    if (image.startsWith('data:') || image.startsWith('http://') || image.startsWith('https://')) {
+
+    if (
+      image.startsWith('data:') ||
+      image.startsWith('http://') ||
+      image.startsWith('https://')
+    ) {
       return image;
     }
+
     if (image.startsWith('/images/')) {
       return `${API_URL}${image}`;
     }
-    // If it looks like raw base64 without prefix
-    if (image.length > 50 && !image.includes(' ')) {
+
+    // Raw base64
+    if (
+      image.length > 50 &&
+      !image.includes(' ')
+    ) {
       return `data:image/jpeg;base64,${image}`;
     }
+
     return image;
   }
 
-  if (typeof image === 'object' && image !== null) {
-    const target = image.url || image.base64 || image.image || image.src || (image.result && image.result.image) || null;
+  if (
+    typeof image === 'object' &&
+    image !== null
+  ) {
+    const target =
+      image.url ||
+      image.base64 ||
+      image.image ||
+      image.src ||
+      (image.result && image.result.image) ||
+      null;
+
     return getImageUrl(target);
   }
 
   return null;
 }
 
-/**
- * Generates a dynamic craft vector artwork fallback matching the book title, chapter page, and art style.
- */
-export function createCraftStorySVG({ title, pageNumber = 1, style, promptText }) {
-  const isDark = style === 'comic_bw' || style === 'ink';
-  const isComic = style === 'comic_color' || style === 'comic';
+// ======================================================
+// FALLBACK STORY SVG
+// ======================================================
 
-  const bg1 = isDark ? '#181E29' : (isComic ? '#FFF4E0' : '#FAF3E0');
-  const bg2 = isDark ? '#0D1117' : (isComic ? '#FAD09C' : '#EAD7C3');
-  const accent = isDark ? '#E2C044' : (isComic ? '#E05A47' : '#B85B35');
-  const textColor = isDark ? '#F5F5F7' : '#2D231E';
+export function createCraftStorySVG({
+  title,
+  pageNumber = 1,
+  style,
+  promptText,
+}) {
+  const isDark =
+    style === 'comic_bw' ||
+    style === 'ink';
 
-  const cleanTitle = (title || 'Illustrated Storybook').replace(/[<>&'"]/g, '').slice(0, 40);
-  const cleanSnippet = (promptText || 'Story Illustration').replace(/[<>&'"]/g, '').slice(0, 70);
+  const isComic =
+    style === 'comic_color' ||
+    style === 'comic';
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
-    <defs>
-      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="${bg1}"/>
-        <stop offset="100%" stop-color="${bg2}"/>
-      </linearGradient>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#bgGrad)"/>
-    <rect x="24" y="24" width="552" height="552" rx="28" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="6 6" opacity="0.5"/>
-    <circle cx="300" cy="240" r="100" fill="${accent}" opacity="0.12"/>
-    <circle cx="300" cy="240" r="60" fill="none" stroke="${accent}" stroke-width="2" opacity="0.3"/>
-    <text x="300" y="225" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="bold" fill="${textColor}">${cleanTitle}</text>
-    <text x="300" y="260" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="600" fill="${accent}" letter-spacing="2">CHAPTER ${pageNumber} • ILLUSTRATION</text>
-    <text x="300" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="${textColor}" opacity="0.85">"${cleanSnippet}..."</text>
-  </svg>`;
+  const bg1 = isDark
+    ? '#181E29'
+    : isComic
+    ? '#FFF4E0'
+    : '#FAF3E0';
 
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const bg2 = isDark
+    ? '#0D1117'
+    : isComic
+    ? '#FAD09C'
+    : '#EAD7C3';
+
+  const accent = isDark
+    ? '#E2C044'
+    : isComic
+    ? '#E05A47'
+    : '#B85B35';
+
+  const textColor = isDark
+    ? '#F5F5F7'
+    : '#2D231E';
+
+  const cleanTitle = (
+    title || 'Illustrated Storybook'
+  )
+    .replace(/[<>&'"]/g, '')
+    .slice(0, 40);
+
+  const cleanSnippet = (
+    promptText || 'Story Illustration'
+  )
+    .replace(/[<>&'"]/g, '')
+    .slice(0, 70);
+
+  const svg = `
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="600"
+      height="600"
+      viewBox="0 0 600 600"
+    >
+      <defs>
+        <linearGradient
+          id="bgGrad"
+          x1="0%"
+          y1="0%"
+          x2="100%"
+          y2="100%"
+        >
+          <stop
+            offset="0%"
+            stop-color="${bg1}"
+          />
+          <stop
+            offset="100%"
+            stop-color="${bg2}"
+          />
+        </linearGradient>
+      </defs>
+
+      <rect
+        width="100%"
+        height="100%"
+        fill="url(#bgGrad)"
+      />
+
+      <rect
+        x="24"
+        y="24"
+        width="552"
+        height="552"
+        rx="28"
+        fill="none"
+        stroke="${accent}"
+        stroke-width="2"
+        stroke-dasharray="6 6"
+        opacity="0.5"
+      />
+
+      <circle
+        cx="300"
+        cy="240"
+        r="100"
+        fill="${accent}"
+        opacity="0.12"
+      />
+
+      <circle
+        cx="300"
+        cy="240"
+        r="60"
+        fill="none"
+        stroke="${accent}"
+        stroke-width="2"
+        opacity="0.3"
+      />
+
+      <text
+        x="300"
+        y="225"
+        text-anchor="middle"
+        font-family="Georgia, serif"
+        font-size="22"
+        font-weight="bold"
+        fill="${textColor}"
+      >
+        ${cleanTitle}
+      </text>
+
+      <text
+        x="300"
+        y="260"
+        text-anchor="middle"
+        font-family="sans-serif"
+        font-size="13"
+        font-weight="600"
+        fill="${accent}"
+        letter-spacing="2"
+      >
+        CHAPTER ${pageNumber} • ILLUSTRATION
+      </text>
+
+      <text
+        x="300"
+        y="340"
+        text-anchor="middle"
+        font-family="Georgia, serif"
+        font-size="13"
+        fill="${textColor}"
+        opacity="0.85"
+      >
+        "${cleanSnippet}..."
+      </text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    svg
+  )}`;
 }
 
 // ======================================================
@@ -135,7 +321,10 @@ export function getToken() {
 }
 
 export function setToken(token) {
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(
+    TOKEN_KEY,
+    token
+  );
 }
 
 export function removeToken() {
@@ -145,9 +334,12 @@ export function removeToken() {
 
 export function getUser() {
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw =
+      localStorage.getItem(USER_KEY);
 
-    return raw ? JSON.parse(raw) : null;
+    return raw
+      ? JSON.parse(raw)
+      : null;
   } catch {
     return null;
   }
@@ -178,7 +370,8 @@ export async function loginUser(
   email,
   password
 ) {
-  const cleanEmail = email.trim();
+  const cleanEmail =
+    email.trim();
 
   if (!cleanEmail) {
     throw new Error(
@@ -202,19 +395,22 @@ export async function loginUser(
 
   try {
     const response =
-      await fetch(url, {
-        method: 'POST',
+      await fetchWithRetry(
+        url,
+        {
+          method: 'POST',
 
-        headers: {
-          'Content-Type':
-            'application/json',
-        },
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
 
-        body: JSON.stringify({
-          email: cleanEmail,
-          password,
-        }),
-      });
+          body: JSON.stringify({
+            email: cleanEmail,
+            password,
+          }),
+        }
+      );
 
     const contentType =
       response.headers.get(
@@ -236,7 +432,7 @@ export async function loginUser(
 
       throw new Error(
         text ||
-        'Server returned an invalid response.'
+          'Server returned an invalid response.'
       );
     }
 
@@ -248,8 +444,8 @@ export async function loginUser(
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Login failed (${response.status})`
+          data.message ||
+          `Login failed (${response.status})`
       );
     }
 
@@ -266,7 +462,6 @@ export async function loginUser(
     }
 
     return data;
-
   } catch (error) {
     console.error(
       'LOGIN ERROR:',
@@ -331,24 +526,27 @@ export async function registerUser(
 
   try {
     const response =
-      await fetch(url, {
-        method: 'POST',
+      await fetchWithRetry(
+        url,
+        {
+          method: 'POST',
 
-        headers: {
-          'Content-Type':
-            'application/json',
-        },
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
 
-        body: JSON.stringify({
-          username:
-            cleanUsername,
+          body: JSON.stringify({
+            username:
+              cleanUsername,
 
-          email:
-            cleanEmail,
+            email:
+              cleanEmail,
 
-          password,
-        }),
-      });
+            password,
+          }),
+        }
+      );
 
     const contentType =
       response.headers.get(
@@ -370,7 +568,7 @@ export async function registerUser(
 
       throw new Error(
         text ||
-        'Server returned an invalid response.'
+          'Server returned an invalid response.'
       );
     }
 
@@ -382,8 +580,8 @@ export async function registerUser(
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Registration failed (${response.status})`
+          data.message ||
+          `Registration failed (${response.status})`
       );
     }
 
@@ -400,7 +598,6 @@ export async function registerUser(
     }
 
     return data;
-
   } catch (error) {
     console.error(
       'REGISTER ERROR:',
@@ -415,14 +612,6 @@ export async function registerUser(
 // GET STYLES
 // ======================================================
 
-/**
- * GET /api/styles
- *
- * IMPORTANT:
- * This function now requires the backend
- * endpoint to exist.
- */
-
 export async function getStyles() {
   const url =
     `${API_URL}/api/styles`;
@@ -434,7 +623,7 @@ export async function getStyles() {
 
   try {
     const response =
-      await fetch(url);
+      await fetchWithRetry(url);
 
     const contentType =
       response.headers.get(
@@ -462,8 +651,8 @@ export async function getStyles() {
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Failed to load styles (${response.status})`
+          data.message ||
+          `Failed to load styles (${response.status})`
       );
     }
 
@@ -477,7 +666,6 @@ export async function getStyles() {
     }
 
     return data;
-
   } catch (error) {
     console.error(
       'STYLES ERROR:',
@@ -519,14 +707,17 @@ export async function getBooks() {
 
   try {
     const response =
-      await fetch(url, {
-        method: 'GET',
+      await fetchWithRetry(
+        url,
+        {
+          method: 'GET',
 
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      });
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
 
     const contentType =
       response.headers.get(
@@ -554,8 +745,8 @@ export async function getBooks() {
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Failed to load books (${response.status})`
+          data.message ||
+          `Failed to load books (${response.status})`
       );
     }
 
@@ -573,7 +764,6 @@ export async function getBooks() {
     throw new Error(
       'Backend returned an invalid books response.'
     );
-
   } catch (error) {
     console.error(
       'GET BOOKS ERROR:',
@@ -594,24 +784,38 @@ export async function getBooks() {
 
 export async function getBookById(id) {
   if (!id) {
-    throw new Error('Book ID is required.');
+    throw new Error(
+      'Book ID is required.'
+    );
   }
 
-  const token = getToken();
-  const url = `${API_URL}/books/${id}`;
+  const token =
+    getToken();
 
-  console.log('GET BOOK →', url);
+  const url =
+    `${API_URL}/books/${id}`;
+
+  console.log(
+    'GET BOOK →',
+    url
+  );
 
   try {
     const headers = {};
+
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.Authorization =
+        `Bearer ${token}`;
     }
 
-    const response = await fetchWithRetry(url, {
-      method: 'GET',
-      headers,
-    });
+    const response =
+      await fetchWithRetry(
+        url,
+        {
+          method: 'GET',
+          headers,
+        }
+      );
 
     const contentType =
       response.headers.get(
@@ -639,13 +843,12 @@ export async function getBookById(id) {
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Failed to load book (${response.status})`
+          data.message ||
+          `Failed to load book (${response.status})`
       );
     }
 
     return data.book || data;
-
   } catch (error) {
     console.error(
       'GET BOOK ERROR:',
@@ -664,9 +867,7 @@ export async function getBookById(id) {
  * DELETE /books/:id
  */
 
-export async function deleteBook(
-  id
-) {
+export async function deleteBook(id) {
   if (!id) {
     throw new Error(
       'Book ID is required.'
@@ -692,14 +893,17 @@ export async function deleteBook(
 
   try {
     const response =
-      await fetch(url, {
-        method: 'DELETE',
+      await fetchWithRetry(
+        url,
+        {
+          method: 'DELETE',
 
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      });
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
 
     const contentType =
       response.headers.get(
@@ -725,13 +929,12 @@ export async function deleteBook(
     if (!response.ok) {
       throw new Error(
         data.error ||
-        data.message ||
-        `Failed to delete book (${response.status})`
+          data.message ||
+          `Failed to delete book (${response.status})`
       );
     }
 
     return data;
-
   } catch (error) {
     console.error(
       'DELETE BOOK ERROR:',
@@ -756,7 +959,8 @@ export async function deleteBook(
  * {
  *   prompt,
  *   pageCount,
- *   style
+ *   style,
+ *   language
  * }
  */
 
@@ -766,92 +970,224 @@ export async function generateBook({
   style = 'watercolor',
   language = 'English',
 }) {
-  const token = getToken();
+  const token =
+    getToken();
 
   if (!token) {
-    throw new Error('You must be logged in to generate a book.');
+    throw new Error(
+      'You must be logged in to generate a book.'
+    );
   }
 
-  if (!prompt || !prompt.trim()) {
-    throw new Error('Prompt is required.');
+  if (
+    !prompt ||
+    !prompt.trim()
+  ) {
+    throw new Error(
+      'Prompt is required.'
+    );
   }
 
-  const url = `${API_URL}/books/generate`;
+  const url =
+    `${API_URL}/books/generate`;
 
-  console.log('GENERATE BOOK →', url, 'Language:', language);
+  console.log(
+    'GENERATE BOOK →',
+    url,
+    'Language:',
+    language
+  );
 
   try {
-    const response = await fetchWithRetry(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        prompt: prompt.trim(),
-        pageCount,
-        style,
-        language,
-      }),
-    });
+    const response =
+      await fetchWithRetry(
+        url,
+        {
+          method: 'POST',
 
-    const contentType = response.headers.get('content-type') || '';
+          headers: {
+            'Content-Type':
+              'application/json',
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            prompt:
+              prompt.trim(),
+
+            pageCount,
+
+            style,
+
+            language,
+          }),
+        }
+      );
+
+    const contentType =
+      response.headers.get(
+        'content-type'
+      ) || '';
+
     let data;
 
-    if (contentType.includes('application/json')) {
-      data = await response.json();
+    if (
+      contentType.includes(
+        'application/json'
+      )
+    ) {
+      data =
+        await response.json();
     } else {
-      const text = await response.text();
-      throw new Error(text || 'Server returned an invalid response.');
+      const text =
+        await response.text();
+
+      throw new Error(
+        text ||
+          'Server returned an invalid response.'
+      );
     }
 
-    console.log('GENERATE BOOK ←', data);
+    console.log(
+      'GENERATE BOOK ←',
+      data
+    );
 
     if (!response.ok) {
       throw new Error(
-        data.error || data.message || `Book generation failed (${response.status})`
+        data.error ||
+          data.message ||
+          `Book generation failed (${response.status})`
       );
     }
 
     return data.book || data;
   } catch (error) {
-    console.error('GENERATE BOOK ERROR:', error);
+    console.error(
+      'GENERATE BOOK ERROR:',
+      error
+    );
+
     throw error;
   }
 }
 
+// ======================================================
+// TEXT TO SPEECH
+// ======================================================
+
 /**
  * POST /books/tts
- * Synthesizes voice audio for story text using ElevenLabs backend proxy or triggers browser fallback.
+ *
+ * Synthesizes voice audio for story text.
  */
-export async function fetchStoryAudio(text, language = 'English', voiceId = null, apiKey = null) {
-  const token = getToken();
-  if (!token) throw new Error('Authentication required');
 
-  const url = `${API_URL}/books/tts`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ text, language, voiceId, apiKey }),
-  });
+export async function fetchStoryAudio(
+  text,
+  language = 'English',
+  voiceId = null,
+  apiKey = null
+) {
+  const token =
+    getToken();
 
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    const json = await response.json();
-    if (json.fallback) {
-      return { fallback: true, message: json.message };
+  if (!token) {
+    throw new Error(
+      'Authentication required'
+    );
+  }
+
+  if (!text || !text.trim()) {
+    throw new Error(
+      'Story text is required'
+    );
+  }
+
+  const url =
+    `${API_URL}/books/tts`;
+
+  try {
+    const response =
+      await fetchWithRetry(
+        url,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json',
+
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({
+            text,
+            language,
+            voiceId,
+            apiKey,
+          }),
+        }
+      );
+
+    const contentType =
+      response.headers.get(
+        'content-type'
+      ) || '';
+
+    // Backend returned JSON
+    if (
+      contentType.includes(
+        'application/json'
+      )
+    ) {
+      const json =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          json.error ||
+            json.message ||
+            'TTS request failed'
+        );
+      }
+
+      if (json.fallback) {
+        return {
+          fallback: true,
+          message:
+            json.message,
+        };
+      }
+
+      return json;
     }
-  }
 
-  if (response.ok && contentType.includes('audio')) {
-    const blob = await response.blob();
-    return { audioUrl: URL.createObjectURL(blob) };
-  }
+    // Backend returned audio
+    if (
+      response.ok &&
+      contentType.includes('audio')
+    ) {
+      const blob =
+        await response.blob();
 
-  return { fallback: true };
+      return {
+        audioUrl:
+          URL.createObjectURL(blob),
+      };
+    }
+
+    return {
+      fallback: true,
+    };
+  } catch (error) {
+    console.error(
+      'TTS ERROR:',
+      error
+    );
+
+    throw error;
+  }
 }
-
-
