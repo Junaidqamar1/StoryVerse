@@ -85,6 +85,18 @@ export default function BookReaderPage() {
     return () => stopAudio();
   }, [id]);
 
+  // Auto-select initial priority voice when voices load.
+  // MUST stay above any early `return` below — React requires every hook to run
+  // in the same order on every render, and this effect used to sit after the
+  // isLoading/!book returns, which caused "Rendered fewer hooks than expected"
+  // (React error #310) the moment `book` finished loading.
+  useEffect(() => {
+    if (!selectedVoiceURI) {
+      // Default to ElevenLabs Rachel or first available voice
+      setSelectedVoiceURI('eleven_jessica');
+    }
+  }, [selectedVoiceURI]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#D4E8FA] flex flex-col justify-between">
@@ -181,14 +193,6 @@ export default function BookReaderPage() {
 
   // Unified voice list containing ElevenLabs real voices + browser natural voices
   const allVoiceOptions = [...elevenLabsVoices, ...displayBrowserVoices];
-
-  // Auto-select initial priority voice when voices load
-  useEffect(() => {
-    if (!selectedVoiceURI) {
-      // Default to ElevenLabs Rachel or first available voice
-      setSelectedVoiceURI('eleven_jessica');
-    }
-  }, [selectedVoiceURI]);
 
   const handleSetApiKeyPrompt = () => {
     const current = localStorage.getItem('elevenlabs_api_key') || '';
