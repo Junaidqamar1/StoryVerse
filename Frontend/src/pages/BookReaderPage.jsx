@@ -18,7 +18,7 @@ export default function BookReaderPage() {
   // Audio narration state
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
-  const [speechSpeed, setSpeechSpeed] = useState(0.85); // 0.85 = Calm human storyteller speed
+  const [speechSpeed, setSpeechSpeed] = useState(1.0); // 1.0 keeps ElevenLabs sounding human (slowing audio makes it robotic)
   const [availableVoices, setAvailableVoices] = useState([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
   const audioRef = useRef(null);
@@ -147,14 +147,14 @@ export default function BookReaderPage() {
     watercolor: 'Storybook Watercolor',
   };
 
-  // ElevenLabs Studio Character Voices
+  // Modern ElevenLabs voices that sound like a real narrator (not old robotic premades)
   const elevenLabsVoices = [
-    { voiceURI: 'eleven_rachel', voiceId: '21m00Tcm4TlvDq8ikWAM', name: '✨ ElevenLabs: Rachel (Warm Storyteller)' },
-    { voiceURI: 'eleven_adam', voiceId: 'pNInz6obpgDQGcFmaJgB', name: '✨ ElevenLabs: Adam (Deep Male Narrator)' },
-    { voiceURI: 'eleven_bella', voiceId: 'EXAVITQu4vr4xnSDxMaL', name: '✨ ElevenLabs: Bella (Fairy Tale Soft)' },
-    { voiceURI: 'eleven_antoni', voiceId: 'ErXwobaYiN019PkySvjV', name: '✨ ElevenLabs: Antoni (Rich Resonant)' },
-    { voiceURI: 'eleven_elli', voiceId: 'MF3mGyEYCl7XYWbV9V6O', name: '✨ ElevenLabs: Elli (Friendly Kid Voice)' },
-    { voiceURI: 'eleven_josh', voiceId: 'TxGEqnHWrfWFTfGW9XjX', name: '✨ ElevenLabs: Josh (Soothing Male)' },
+    { voiceURI: 'eleven_jessica', voiceId: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica — natural storyteller' },
+    { voiceURI: 'eleven_chris', voiceId: 'iP95p4xoKVk53GoZ742B', name: 'Chris — natural male' },
+    { voiceURI: 'eleven_george', voiceId: 'JBFqnCBsd6RMkjVDRZzb', name: 'George — warm British' },
+    { voiceURI: 'eleven_lily', voiceId: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily — soft British' },
+    { voiceURI: 'eleven_matilda', voiceId: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda — gentle bedtime' },
+    { voiceURI: 'eleven_sarah', voiceId: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah — clear female' },
   ];
 
   // Filter browser voices matching current story language
@@ -183,7 +183,7 @@ export default function BookReaderPage() {
   useEffect(() => {
     if (!selectedVoiceURI) {
       // Default to ElevenLabs Rachel or first available voice
-      setSelectedVoiceURI('eleven_rachel');
+      setSelectedVoiceURI('eleven_jessica');
     }
   }, [selectedVoiceURI]);
 
@@ -216,7 +216,7 @@ export default function BookReaderPage() {
 
       if (result && result.audioUrl) {
         const audio = new Audio(result.audioUrl);
-        audio.playbackRate = speechSpeed; // Calmer, human storytelling pace
+        audio.playbackRate = speechSpeed;
         audioRef.current = audio;
         audio.onended = () => {
           setIsPlaying(false);
@@ -273,14 +273,17 @@ export default function BookReaderPage() {
       const chosenVoice = voices.find((v) => v.voiceURI === selectedVoiceURI);
       if (chosenVoice) {
         utterance.voice = chosenVoice;
-      } else if (displayVoices.length > 0) {
-        utterance.voice = displayVoices[0];
+      } else if (displayBrowserVoices.length > 0) {
+        const natural = displayBrowserVoices.find((v) =>
+          /google|aria|jenny|samantha|natural|neural/i.test(v.name)
+        );
+        utterance.voice = natural || displayBrowserVoices[0];
       }
     }
 
     // Gentle, warm human storyteller pace and lower warm pitch
-    utterance.rate = Math.min(speechSpeed, 0.85);
-    utterance.pitch = 0.95;
+    utterance.rate = speechSpeed;
+    utterance.pitch = 1.0;
 
     utterance.onstart = () => {
       setIsPlaying(true);
@@ -298,8 +301,8 @@ export default function BookReaderPage() {
       if (utterance.voice) {
         const retryUtterance = new SpeechSynthesisUtterance(currentPage.text);
         retryUtterance.lang = targetLang;
-        retryUtterance.rate = Math.min(speechSpeed, 0.85);
-        retryUtterance.pitch = 0.95;
+        retryUtterance.rate = speechSpeed;
+        retryUtterance.pitch = 1.0;
         retryUtterance.onstart = () => { setIsPlaying(true); setIsAudioLoading(false); };
         retryUtterance.onend = () => { setIsPlaying(false); setIsAudioLoading(false); };
         retryUtterance.onerror = () => { setIsPlaying(false); setIsAudioLoading(false); };
@@ -389,7 +392,7 @@ export default function BookReaderPage() {
                       className="text-xs bg-stone-100 border border-stone-200 text-stone-800 font-semibold px-2.5 py-1.5 rounded-full outline-none focus:ring-1 focus:ring-amber-500 max-w-[150px] sm:max-w-[190px] truncate cursor-pointer shadow-2xs"
                       title="Choose narrator voice"
                     >
-                      <optgroup label="ElevenLabs Authentic Studio Voices">
+                      <optgroup label="Real narration voices">
                         {elevenLabsVoices.map((voice) => (
                           <option key={voice.voiceURI} value={voice.voiceURI}>
                             {voice.name}
@@ -420,9 +423,9 @@ export default function BookReaderPage() {
                     {/* Speed Selector */}
                     <div className="inline-flex bg-stone-100 p-0.5 rounded-full text-[10px] font-semibold text-stone-600">
                       {[
-                        { speed: 0.75, label: '0.75x' },
-                        { speed: 0.85, label: '0.85x' },
-                        { speed: 1.0, label: '1.0x' },
+                        { speed: 0.9, label: 'Slow' },
+                        { speed: 1.0, label: 'Natural' },
+                        { speed: 1.1, label: 'Lively' },
                       ].map((item) => (
                         <button
                           key={item.speed}

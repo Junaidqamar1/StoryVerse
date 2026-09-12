@@ -19,7 +19,8 @@ const STORY_SCHEMA = {
           pageNumber: { type: 'INTEGER' },
           text: {
             type: 'STRING',
-            description: '2-4 sentences of polished, publisher-quality prose for this page.',
+            description:
+              '2-3 short, easy sentences a child could understand when read aloud. Everyday words. One clear action or feeling per page.',
           },
           imagePrompt: {
             type: 'STRING',
@@ -35,143 +36,211 @@ const STORY_SCHEMA = {
 };
 
 function buildPrompt(userIdea, pageCount, language = 'English') {
-  return `You are a World-Class Master Storyteller and Award-Winning Author (Pixar, Studio Ghibli, NYT Bestseller caliber). Your writing is captivating, deeply emotional, cinematic, and rich with sensory detail.
+  return `You write children's picture books for ages 5 to 10. Judges and parents should understand every sentence on first listen. Write warm, simple, and kind — never fancy, dark, or academic.
 
-A user has pitched this story dream/idea:
+A user pitched this idea:
 "${userIdea}"
 
-Create an epic, complete illustrated storybook with exactly ${pageCount} pages based on this prompt.
+Write a complete illustrated picture book with exactly ${pageCount} pages.
 
-LANGUAGE REQUIREMENT:
-- The story "title" and each page's narrative "text" MUST be written fluently in ${language}.
-- The "characterDescription" and "imagePrompt" fields MUST be written in detailed English to ensure hyper-accurate AI image rendering.
+LANGUAGE:
+- "title" and each page "text" MUST be in ${language}.
+- "characterDescription" and "imagePrompt" MUST be in English for image generation.
 
-MASTER STORYTELLING CRAFT RULES:
-1. HOOK IMMEDIATELY: Start Page 1 right in the middle of visceral action or vivid sensation. No cliché openings like "Once upon a time" or slow scene setup.
-2. SHOW, DON'T TELL: Paint rich atmospheric imagery—sound, color, temperature, chest-tightening emotion.
-3. SENTENCE DYNAMICS: Alternate between short, heart-pounding beats and poetic, sweeping prose.
-4. CHARACTER CONSISTENCY: Invent ONE visually iconic main character. In "characterDescription", provide a fixed, concrete physical description in English (exact clothing, hair color/style, eye color, signature accessories, age/expression) that will be used across every page image.
-5. PAGE IMAGE PROMPT: For each page, write a standalone cinematic image prompt in English detailing camera angle (e.g. dramatic low-angle shot, cinematic wide lens), lighting (e.g. volumetric golden hour, bioluminescent glow), action, environment, and mood.
-6. FINAL PAGE RULE: The final page must follow every rule above just as strictly as page 1. Do not summarize the story's theme or moral. Do not use abstract words like triumph, courage, legend, legacy, victory, or wonder to describe the outcome. End on one last concrete, specific, sensory image or action instead - something the reader can picture, not a feeling being named.
+STORY SHAPE (keep it this simple):
+1. Page 1: Meet one named hero. Show what they want in one everyday moment.
+2. Early pages: A small, clear problem appears. The hero tries.
+3. Middle: The try fails in a way kids can picture (lost map, rain, fear, a locked door).
+4. Later pages: A friend or a kind idea helps. The hero tries again.
+5. Last page: A warm, happy ending. The hero is home, hugging someone, sharing food, or looking at the stars. No lecture. No moral speech.
+
+WRITE LIKE A BEDTIME BOOK:
+- Short sentences. Most sentences under 14 words.
+- Everyday words only (look, run, lost, friend, rain, home, hug, try, smile).
+- Name the character. Use "said", "looked", "ran", "held" — not "whispered into the void".
+- One feeling per page (scared, brave, sad, glad). Show it with an action.
+- The page text must sound good when a human reads it out loud. Use periods. Avoid long commas.
+- Do NOT use: destiny, realm, saga, odyssey, visceral, cinematic, spark of, uncharted, legacy, triumph, atmosphere crackled, electric wonder.
+- Do NOT start with "Once upon a time" unless the user asked for a fairy tale.
+- Title: 2 to 5 simple words. Example: "Milo Wants to Fly", "The Lost Blue Kite".
+
+CHARACTER:
+- Invent ONE friendly main character with a simple name.
+- In "characterDescription", give a fixed look in English: age, hair, clothes, one accessory. Keep it the same on every page.
+
+IMAGES:
+- Each "imagePrompt" is a standalone English scene: character + action + place + lighting + camera angle.
+- Bright, hopeful, storybook lighting. No text in the image.
 
 FORMAT PER PAGE:
-- "pageNumber": Integer (1 to ${pageCount})
-- "text": 3-5 sentences of breathtaking, publisher-quality prose in ${language}.
-- "imagePrompt": Detailed cinematic visual scene description in English for image generation.
+- "pageNumber": 1 to ${pageCount}
+- "text": 2-3 short sentences in ${language}
+- "imagePrompt": English visual scene
 
 Return ONLY valid JSON matching the schema.`;
 }
 
+function pickHeroName(userIdea) {
+  const match = userIdea.match(/\b([A-Z][a-z]{2,12})\b/);
+  if (match && !['The', 'A', 'An', 'In', 'On', 'My'].includes(match[1])) {
+    return match[1];
+  }
+  return 'Mira';
+}
+
 /**
- * Fallback story generator for when Gemini API hits quota limits (429) or is unavailable.
- * Delivers cinematic, multi-sentence stories customized to the user's idea in 8+ languages.
+ * Fallback story when Gemini/Grok are unavailable.
+ * Still a real beginning-middle-end picture book, not purple prose.
  */
 function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'English') {
-  const cleanIdea = userIdea.trim();
-  const words = cleanIdea.replace(/[^\w\s]/gi, '').split(/\s+/).filter(Boolean);
-  const coreConcept = words.slice(0, 6).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') || 'The Great Adventure';
+  const cleanIdea = userIdea.trim() || 'a small adventure';
+  const hero = pickHeroName(cleanIdea);
+  const total = Math.max(3, Math.min(12, pageCount));
 
-  const titleTemplates = {
-    Spanish: `La Odisea Extraordinaria: ${coreConcept}`,
-    French: `L'Épopée Fantastique: ${coreConcept}`,
-    German: `Das Chronik-Abenteuer: ${coreConcept}`,
-    Hindi: `${coreConcept}: एक महान साहसिक कहानी`,
-    Bengali: `${coreConcept}: এক মায়াবী অ্যাডভেঞ্চার`,
-    Japanese: `${coreConcept} - 運命の物語`,
-    Italian: `La Leggenda Incantata: ${coreConcept}`,
-    Portuguese: `A Saga Lendária: ${coreConcept}`,
-    English: `The Legend of ${coreConcept}`,
+  const titles = {
+    English: `${hero}'s Big Wish`,
+    Spanish: `El gran deseo de ${hero}`,
+    French: `Le grand souhait de ${hero}`,
+    German: `${hero}s großer Wunsch`,
+    Hindi: `${hero} की बड़ी चाह`,
+    Bengali: `${hero}-এর বড় ইচ্ছে`,
+    Japanese: `${hero}の大きな願い`,
+    Italian: `Il grande desiderio di ${hero}`,
+    Portuguese: `O grande desejo de ${hero}`,
   };
 
-  const title = titleTemplates[language] || titleTemplates.English;
-  const characterDescription = 'A brave young protagonist with striking amber eyes, wearing an embroidered midnight-blue jacket, a brass compass medallion, leather boots, and carrying a glowing starlight lantern';
+  const characterDescription = `${hero}, a kind 8-year-old with dark curly hair, a yellow raincoat, red sneakers, and a small cloth backpack`;
 
-  const total = Math.max(3, Math.min(12, pageCount));
+  const beats = [
+    {
+      en: `${hero} sat by the window and thought about ${cleanIdea}. "I want to try," ${hero} said, tying the yellow raincoat.`,
+      es: `${hero} se sentó junto a la ventana y pensó en ${cleanIdea}. "Quiero intentarlo," dijo ${hero}.`,
+      fr: `${hero} s'assit près de la fenêtre et pensa à ${cleanIdea}. "Je veux essayer," dit ${hero}.`,
+      de: `${hero} saß am Fenster und dachte an ${cleanIdea}. "Ich will es versuchen," sagte ${hero}.`,
+      hi: `${hero} खिड़की के पास बैठी और ${cleanIdea} के बारे में सोचा। "मैं कोशिश करूँगी," ${hero} ने कहा।`,
+      bn: `${hero} জানালার পাশে বসে ${cleanIdea} নিয়ে ভাবল। "আমি চেষ্টা করব," ${hero} বলল।`,
+      ja: `${hero}は窓のそばで${cleanIdea}のことを考えました。「やってみたい」と${hero}は言いました。`,
+      it: `${hero} si sedette alla finestra e pensò a ${cleanIdea}. "Voglio provarci," disse ${hero}.`,
+      pt: `${hero} sentou-se na janela e pensou em ${cleanIdea}. "Eu quero tentar," disse ${hero}.`,
+      img: `${hero} a kind 8-year-old in a yellow raincoat sitting at a sunny bedroom window, looking outside hopefully, warm morning light, medium shot`,
+    },
+    {
+      en: `${hero} stepped outside. The plan was simple. Find a way to make ${cleanIdea} come true.`,
+      es: `${hero} salió afuera. El plan era simple. Encontrar una forma de hacer realidad ${cleanIdea}.`,
+      fr: `${hero} sortit. Le plan était simple. Trouver un moyen de réaliser ${cleanIdea}.`,
+      de: `${hero} ging hinaus. Der Plan war einfach. Einen Weg finden, ${cleanIdea} wahr zu machen.`,
+      hi: `${hero} बाहर निकली। योजना आसान थी। ${cleanIdea} को सच करने का रास्ता खोजना।`,
+      bn: `${hero} বাইরে বেরোল। পরিকল্পনা সহজ ছিল। ${cleanIdea} সত্যি করার উপায় খোঁজা।`,
+      ja: `${hero}は外へ出ました。計画はかんたんでした。${cleanIdea}をかなえる方法を探すことです。`,
+      it: `${hero} uscì. Il piano era semplice. Trovare un modo per realizzare ${cleanIdea}.`,
+      pt: `${hero} saiu. O plano era simples. Encontrar um jeito de realizar ${cleanIdea}.`,
+      img: `${hero} in a yellow raincoat walking down a bright neighborhood path, red sneakers, cloth backpack, cheerful daylight, wide shot`,
+    },
+    {
+      en: `Soon the path got hard. Rain started to fall. ${hero} held the backpack tight and kept walking.`,
+      es: `Pronto el camino se puso difícil. Empezó a llover. ${hero} apretó la mochila y siguió caminando.`,
+      fr: `Bientôt le chemin devint dur. La pluie tomba. ${hero} serra le sac et continua.`,
+      de: `Bald wurde der Weg schwer. Es begann zu regnen. ${hero} hielt den Rucksack fest und ging weiter.`,
+      hi: `जल्द रास्ता मुश्किल हो गया। बारिश शुरू हुई। ${hero} बैग कसकर चलती रही।`,
+      bn: `শীঘ্রই পথ কঠিন হল। বৃষ্টি নামল। ${hero} ব্যাগ চেপে ধরে হাঁটতে থাকল।`,
+      ja: `すぐに道がむずかしくなりました。雨が降りました。${hero}はリュックをしっかり持って歩き続けました。`,
+      it: `Presto la strada divenne difficile. Iniziò a piovere. ${hero} strinse lo zaino e continuò.`,
+      pt: `Logo o caminho ficou difícil. Começou a chover. ${hero} apertou a mochila e seguiu.`,
+      img: `${hero} in a yellow raincoat walking through gentle rain on a park path, determined expression, soft grey-blue light, cinematic medium shot`,
+    },
+    {
+      en: `Then ${hero} got stuck. A gate was closed. "I can't do this alone," ${hero} whispered.`,
+      es: `Luego ${hero} se atascó. La puerta estaba cerrada. "No puedo sola," susurró ${hero}.`,
+      fr: `Puis ${hero} resta bloquée. La grille était fermée. "Je ne peux pas toute seule," chuchota ${hero}.`,
+      de: `Dann blieb ${hero} stecken. Das Tor war zu. "Ich schaffe das nicht allein," flüsterte ${hero}.`,
+      hi: `फिर ${hero} रुक गई। फाटक बंद था। "मैं अकेली नहीं कर सकती," ${hero} ने धीरे कहा।`,
+      bn: `তারপর ${hero} আটকে গেল। গেট বন্ধ। "একা পারব না," ${hero} ফিসফিস করল।`,
+      ja: `そして${hero}は止まってしまいました。門が閉まっていました。「ひとりではできない」と${hero}は小さく言いました。`,
+      it: `Poi ${hero} si bloccò. Il cancello era chiuso. "Non ce la faccio da sola," sussurrò ${hero}.`,
+      pt: `Então ${hero} travou. O portão estava fechado. "Não consigo sozinha," sussurrou ${hero}.`,
+      img: `${hero} standing in front of a closed wooden garden gate in light rain, looking worried, yellow raincoat, soft overcast light`,
+    },
+    {
+      en: `A small dog with a blue collar trotted over. It barked once, as if to say, "I can help."`,
+      es: `Un perrito con collar azul se acercó. Ladró una vez, como diciendo, "Puedo ayudar."`,
+      fr: `Un petit chien au collier bleu s'approcha. Il aboya, comme pour dire, "Je peux aider."`,
+      de: `Ein kleiner Hund mit blauem Halsband kam herbei. Er bellte einmal, als wollte er sagen: "Ich helfe."`,
+      hi: `नीले कॉलर वाला एक छोटा कुत्ता आया। उसने एक बार भौंका, जैसे कह रहा हो, "मैं मदद करूँगा।"`,
+      bn: `নীল কলারওয়ালা এক ছোট কুকুর এল। একবার ঘেউ ঘেউ করল, যেন বলছে, "আমি সাহায্য করব।"`,
+      ja: `青い首輪の小さな犬が来ました。ワンと鳴いて、「手伝うよ」と言っているようでした。`,
+      it: `Un cagnolino con il collare blu arrivò. Abbaiò una volta, come a dire, "Posso aiutare."`,
+      pt: `Um cachorrinho de coleira azul chegou. Lateu uma vez, como se dissesse, "Posso ajudar."`,
+      img: `${hero} kneeling beside a small friendly brown dog with a blue collar near a garden gate, rain easing, warm smile, storybook lighting`,
+    },
+    {
+      en: `${hero} followed the dog around the fence. There was a low place to climb. "We can do it," ${hero} said.`,
+      es: `${hero} siguió al perro alrededor de la cerca. Había un sitio bajo para subir. "Podemos," dijo ${hero}.`,
+      fr: `${hero} suivit le chien le long de la clôture. Il y avait un endroit bas. "On peut le faire," dit ${hero}.`,
+      de: `${hero} folgte dem Hund um den Zaun. Es gab eine niedrige Stelle. "Wir schaffen das," sagte ${hero}.`,
+      hi: `${hero} कुत्ते के साथ बाड़ के चारों ओर गई। चढ़ने की एक नीची जगह थी। "हम कर सकते हैं," ${hero} ने कहा।`,
+      bn: `${hero} কুকুরের পেছনে বেড়া ঘুরল। উঠে যাওয়ার একটা নিচু জায়গা ছিল। "আমরা পারব," ${hero} বলল।`,
+      ja: `${hero}は犬について柵のまわりを行きました。低いところがありました。「できるよ」と${hero}は言いました。`,
+      it: `${hero} seguì il cane intorno al recinto. C'era un punto basso. "Possiamo farcela," disse ${hero}.`,
+      pt: `${hero} seguiu o cão ao redor da cerca. Havia um lugar baixo. "A gente consegue," disse ${hero}.`,
+      img: `${hero} and a small brown dog finding a low gap in a wooden fence, hopeful expressions, clearing sky, golden rim light`,
+    },
+    {
+      en: `On the other side, ${hero} found what they needed for ${cleanIdea}. It was not huge. It was just right. ${hero} laughed.`,
+      es: `Al otro lado, ${hero} encontró lo que necesitaba para ${cleanIdea}. No era enorme. Era justo. ${hero} rió.`,
+      fr: `De l'autre côté, ${hero} trouva ce qu'il fallait pour ${cleanIdea}. Ce n'était pas énorme. C'était parfait. ${hero} rit.`,
+      de: `Auf der anderen Seite fand ${hero} was für ${cleanIdea} fehlte. Es war nicht riesig. Es war genau richtig. ${hero} lachte.`,
+      hi: `दूसरी तरफ़ ${hero} को ${cleanIdea} के लिए जो चाहिए था मिल गया। बहुत बड़ा नहीं था। बस ठीक था। ${hero} हँसी।`,
+      bn: `ওপাশে ${hero} ${cleanIdea}-এর জন্য যা দরকার তা পেল। বিশাল নয়। ঠিক মতো। ${hero} হাসল।`,
+      ja: `向こう側で${hero}は${cleanIdea}に必要なものを見つけました。大きくはありません。ちょうどよかったのです。${hero}は笑いました。`,
+      it: `Dall'altra parte ${hero} trovò ciò che serviva per ${cleanIdea}. Non era enorme. Era giusto. ${hero} rise.`,
+      pt: `Do outro lado, ${hero} achou o que precisava para ${cleanIdea}. Não era enorme. Era certo. ${hero} riu.`,
+      img: `${hero} discovering a simple magical or helpful object in a sunny garden related to ${cleanIdea}, laughing with joy, the small dog beside her, bright golden hour`,
+    },
+    {
+      en: `${hero} walked home with the little dog. The rain had stopped. "Thank you," ${hero} said. They sat on the steps and shared a biscuit.`,
+      es: `${hero} volvió a casa con el perrito. La lluvia paró. "Gracias," dijo ${hero}. Se sentaron y compartieron una galleta.`,
+      fr: `${hero} rentra avec le petit chien. La pluie s'arrêta. "Merci," dit ${hero}. Ils s'assirent et partagèrent un biscuit.`,
+      de: `${hero} ging mit dem kleinen Hund nach Hause. Der Regen hörte auf. "Danke," sagte ${hero}. Sie saßen auf der Treppe und teilten einen Keks.`,
+      hi: `${hero} छोटे कुत्ते के साथ घर लौटी। बारिश रुक गई। "धन्यवाद," ${hero} ने कहा। सीढ़ियों पर बैठकर उन्होंने बिस्किट बाँटा।`,
+      bn: `${hero} ছোট কুকুর নিয়ে বাড়ি ফিরল। বৃষ্টি থামল। "ধন্যবাদ," ${hero} বলল। সিঁড়িতে বসে বিস্কুট ভাগ করল।`,
+      ja: `${hero}は小さな犬と家へ帰りました。雨はやみました。「ありがとう」と${hero}は言いました。玄関の段にすわってビスケットを分けました。`,
+      it: `${hero} tornò a casa con il cagnolino. La pioggia finì. "Grazie," disse ${hero}. Si sedettero e divisero un biscotto.`,
+      pt: `${hero} voltou para casa com o cachorrinho. A chuva parou. "Obrigado," disse ${hero}. Sentaram e partilharam um biscoito.`,
+      img: `${hero} and a small brown dog sitting on sunny front-porch steps sharing a biscuit, dry yellow raincoat, warm sunset light, cozy ending`,
+    },
+  ];
+
+  const langKey = {
+    English: 'en',
+    Spanish: 'es',
+    French: 'fr',
+    German: 'de',
+    Hindi: 'hi',
+    Bengali: 'bn',
+    Japanese: 'ja',
+    Italian: 'it',
+    Portuguese: 'pt',
+  }[language] || 'en';
+
   const pages = [];
-
   for (let i = 1; i <= total; i++) {
-    let text = '';
-    let imagePrompt = '';
-
-    if (i === 1) {
-      if (language === 'Spanish') {
-        text = `El aire vibraba con electricidad cuando la chispa de ${cleanIdea} encendió el cielo nocturno. Sin mirar atrás, el destino dio su primer paso hacia lo desconocido. El viento soplaba con fuerza revelando antiguas promesas.`;
-      } else if (language === 'French') {
-        text = `L'air vibrait d'électricité lorsque l'étincelle de ${cleanIdea} a enflammé le ciel nocturne. Sans regarder en arrière, le destin a franchi son premier pas vers l'inconnu. Le vent soufflait en révélant de précieuses promesses.`;
-      } else if (language === 'German') {
-        text = `Die Luft vibrierte vor Spannung, als der Funke von ${cleanIdea} den Nachthimmel erhellte. Ohne den Blick zurück folgte das Schicksal dem ersten Schritt ins Unbekannte. Ein kühler Wind trug uralte Legenden herbei.`;
-      } else if (language === 'Hindi') {
-        text = `रात के अंधेरे में ${cleanIdea} की एक अनोखी चमक ने पूरी दुनिया को चमका दिया। बिना किसी डर के, साहसी कदम अज्ञात रास्तों की ओर बढ़ चले। ठंडी हवाएं एक महान रहस्य की गवाही दे रही थीं।`;
-      } else if (language === 'Bengali') {
-        text = `আকাশজুড়ে এক মায়াবী আলো ছড়িয়ে পড়ল যখন ${cleanIdea}-এর নতুন অধ্যায় শুরু হলো। কোনো দ্বিধা ছাড়াই সাহসী হৃদয় সামনের অজানা পথের দিকে এগিয়ে চলল। প্রতিটি পদক্ষেপে এক নতুন রূপকথার সৃষ্টি হতে লাগল।`;
-      } else if (language === 'Japanese') {
-        text = `${cleanIdea}の輝きが夜空を染め上げ、運命の歯車が静かに動き始めました。躊躇うことなく、第一歩を踏み出します。澄んだ風が古の約束を囁いていました。`;
-      } else {
-        text = `The atmosphere crackled with electric wonder as the spark of ${cleanIdea} ignited the horizon. Without hesitation, the journey began right into the heart of the uncharted realm. Thunderous winds carried distant melodies of ancient bravery.`;
-      }
-      imagePrompt = `Cinematic wide-angle opening shot, standing at an epic mountain ridge overlooking a breathtaking fantasy landscape inspired by ${cleanIdea}, golden atmospheric lighting, volumetric clouds, dramatic composition.`;
-    } else if (i === total) {
-      if (language === 'Spanish') {
-        text = `Al caer la noche sobre ${cleanIdea}, la linterna dorada descansó sobre la repisa de madera. Una suave brisa fresca cruzó la ventana abierta, silbando una melodía tranquila mientras las estrellas brillaban sobre los techos dorados.`;
-      } else if (language === 'French') {
-        text = `Alors que la nuit tombait sur ${cleanIdea}, la lanterne dorée s'est posée sur le rebord en bois. Une brise fraîche traversait la fenêtre ouverte, fredonnant une douce chanson tandis que les étoiles brillaient sur le toit.`;
-      } else if (language === 'German') {
-        text = `Als die Nacht über ${cleanIdea} hereinbrach, ruhte die Laterne auf dem hölzernen Fensterbrett. Eine kühle Brise strich durch das offene Fenster und die Sterne leuchteten leise über den Dächern.`;
-      } else if (language === 'Hindi') {
-        text = `${cleanIdea} की रात शांत पड़ गई और जलता हुआ दिया लकड़ी की चौखट पर टिक गया। ठंडी हवा खुली खिड़की से गुज़री और आसमान में चमकते तारे धीरे-धीरे झिलमिलाने लगे।`;
-      } else if (language === 'Bengali') {
-        text = `${cleanIdea}-এর আকাশ শান্ত রাতে ঢেকে গেল এবং জ্বলন্ত লণ্ঠনটি কাঠের জানালায় শান্ত হয়ে বসে রইল। খোলা জানালা দিয়ে ঠাণ্ডা বাতাস বয়ে গেল এবং তারারা ধীরে ধীরে জ্বলতে লাগল।`;
-      } else if (language === 'Japanese') {
-        text = `${cleanIdea}に静かな夜が訪れ、星明かりのランタンが木製の窓辺に置かれました。心地よい涼風が吹き抜け、満天の星々が静かに輝いていました。`;
-      } else {
-        text = `As night settled softly over ${cleanIdea}, the glowing lantern rested upon the polished wooden windowsill. A cool breeze drifted through the open frame, carrying the scent of pine while bright white stars sparkled quietly across the sky.`;
-      }
-      imagePrompt = `Atmospheric peaceful night scene, a glowing lantern sitting on a wooden windowsill, cool blue moonlight, twinkling starlight sky, cozy warm indoor glow.`;
-    } else if (i === Math.floor(total / 2)) {
-      if (language === 'Spanish') {
-        text = `En el centro de las sombras, un descubrimiento insospechado sobre ${cleanIdea} lo cambió todo. El camino se dividió en dos, exigiendo una elección Audaz e irreversible. Nadie podía echarse atrás ahora.`;
-      } else if (language === 'French') {
-        text = `Au cœur des ombres, une découverte inattendue liée à ${cleanIdea} a tout bouleversé. Le chemin s'est divisé, imposant un choix audacieux et irréversible. Impossible de faire marche arrière.`;
-      } else if (language === 'German') {
-        text = `Im Zentrum der Schatten veränderte eine überraschende Enthüllung über ${cleanIdea} alles. Der Weg teilte sich und verlangte eine mutige Entscheidung. Es gab kein Zurück mehr.`;
-      } else if (language === 'Hindi') {
-        text = `गहरे सायों के बीच, ${cleanIdea} का एक बड़ा सच सामने आया जिसने सब कुछ बदल दिया। राह दो हिस्सों में बंट गई और एक निडर फैसला लेना पड़ा।`;
-      } else if (language === 'Bengali') {
-        text = `রহস্যের অতল গভীরে ${cleanIdea}-এর একটি চমকপ্রद সত্য প্রকাশ পেল যা সবকিছু বদলে দিল। এক কঠিন ও সাহসী সিদ্ধান্ত নেওয়ার মুহূর্ত উপস্থিত হলো।`;
-      } else if (language === 'Japanese') {
-        text = `影の核心で、${cleanIdea}に関する予期せぬ真実が明かされ、すべてが変わりました。運命の分かれ道で、重大な選択を迫られます。`;
-      } else {
-        text = `At the very center of the shadows, a breathtaking revelation regarding ${cleanIdea} changed the entire quest. The ground trembled as a single decisive choice had to be made. There was no returning to safety.`;
-      }
-      imagePrompt = `Dramatic pivotal climax scene, mysterious glowing ancient monument, dramatic rim lighting, intense contrast, cinematic low camera angle.`;
-    } else {
-      if (language === 'Spanish') {
-        text = `Explorando las profundidades de ${cleanIdea}, secretos dormidos despertaron bajo el resplandor de las estrellas. Cada paso traía una nueva maravilla y un peligro acechante.`;
-      } else if (language === 'French') {
-        text = `En explorant les profondeurs de ${cleanIdea}, des secrets enfouis se sont éveillés sous l'éclat des étoiles. Chaque pas apportait une merveille nouvelle et un frisson d'aventure.`;
-      } else if (language === 'German') {
-        text = `Beim Erforschen der Tiefen von ${cleanIdea} erwachten verborgene Geheimnisse unter dem Sternenlicht. Jeder Schritt brachte neues Staunen und aufregende Energie.`;
-      } else if (language === 'Hindi') {
-        text = `${cleanIdea} की गहराइयों में नए रहस्य तारों की छांव में सामने आने लगे। हर अगला पल एक नया रोमांच और जादू लेकर आ रहा था।`;
-      } else if (language === 'Bengali') {
-        text = `${cleanIdea}-এর রাজ্যময় নতুন পথ খুঁজে পাওয়ার সাথে সাথে তারার আলোয় ঢাকা প্রাচীন গোপনীয়তাগুলি জেগে উঠল। প্রতিটি মুহূর্ত এক নতুন আনন্দের জোয়ার নিয়ে এল।`;
-      } else if (language === 'Japanese') {
-        text = `${cleanIdea}の深部を進むにつれ、星明かりの下で眠っていた秘密が目覚めます。一歩ごとに新しい感動と期待が広上がります。`;
-      } else {
-        text = `Navigating deep into the realm of ${cleanIdea}, forgotten secrets stirred beneath the starlight. Each breath brought fresh wonder and mounting tension, drawing closer to the heart of the magic.`;
-      }
-      imagePrompt = `Exploring a magical vibrant environment inspired by ${cleanIdea}, glowing particles, ethereal lighting, rich environment details, atmospheric depth.`;
+    let beatIndex;
+    if (total === 1) beatIndex = 0;
+    else if (i === 1) beatIndex = 0;
+    else if (i === total) beatIndex = beats.length - 1;
+    else {
+      beatIndex = Math.round(((i - 1) / (total - 1)) * (beats.length - 1));
     }
-
+    const beat = beats[beatIndex];
     pages.push({
       pageNumber: i,
-      text,
-      imagePrompt,
+      text: beat[langKey] || beat.en,
+      imagePrompt: beat.img,
     });
   }
 
   return {
-    title,
+    title: titles[language] || titles.English,
     characterDescription,
     pages,
   };

@@ -19,7 +19,8 @@ module.exports = {
   imageConcurrency: Number(process.env.IMAGE_CONCURRENCY || 3),
   defaultPageCount: Number(process.env.DEFAULT_PAGE_COUNT || 8),
 
-  // Voice narration (ElevenLabs TTS)
+  // Voice narration (ElevenLabs TTS) — Jessica sounds like a real person, not a robot
   elevenlabsApiKey: process.env.ELEVENLABS_API_KEY,
-  elevenlabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM', // Rachel
+  elevenlabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'cgSgspJ2msm6clMCkdW9', // Jessica
+  elevenlabsModel: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
 };

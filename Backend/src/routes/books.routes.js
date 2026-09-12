@@ -5,6 +5,11 @@ const Book = require('../models/Book');
 const bookGenerator = require('../services/bookGenerator');
 const { requireAuth } = require('../middleware/auth');
 const config = require('../config');
+const {
+  toSpokenNarration,
+  DEFAULT_VOICE_ID,
+  NARRATION_VOICE_SETTINGS,
+} = require('../story/narration');
 
 const router = express.Router();
 
@@ -118,33 +123,40 @@ router.post('/tts', async (req, res) => {
     }
 
     const activeApiKey = apiKey || config.elevenlabsApiKey;
+    const spokenText = toSpokenNarration(text);
+
+    async function speakWithElevenLabs(targetVoiceId) {
+      const modelId = config.elevenlabsModel || 'eleven_multilingual_v2';
+      const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}?output_format=mp3_44100_128`;
+      console.log(`[TTS] Fetching ElevenLabs human narration: ${targetVoiceId} (${modelId})`);
+      return fetch(elevenLabsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'xi-api-key': activeApiKey,
+          Accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: spokenText,
+          model_id: modelId,
+          voice_settings: NARRATION_VOICE_SETTINGS,
+        }),
+      });
+    }
 
     // 1. Try ElevenLabs API if key is present
-    if (activeApiKey) {
+    if (!activeApiKey) {
+      console.warn('[TTS] ELEVENLABS_API_KEY is missing. Set it on the backend for real narration.');
+    } else {
       try {
-        const targetVoiceId = voiceId || config.elevenlabsVoiceId || '21m00Tcm4TlvDq8ikWAM';
-        const elevenLabsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`;
+        const preferredVoice = voiceId || config.elevenlabsVoiceId || DEFAULT_VOICE_ID;
+        let response = await speakWithElevenLabs(preferredVoice);
 
-        console.log(`[TTS] Fetching ElevenLabs studio voice: ${targetVoiceId}`);
-
-        const response = await fetch(elevenLabsUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'xi-api-key': activeApiKey,
-            'Accept': 'audio/mpeg',
-          },
-          body: JSON.stringify({
-            text,
-            model_id: 'eleven_multilingual_v2',
-            voice_settings: {
-              stability: 0.40,
-              similarity_boost: 0.85,
-              style: 0.20,
-              use_speaker_boost: true,
-            },
-          }),
-        });
+        if (!response.ok && preferredVoice !== DEFAULT_VOICE_ID) {
+          const errText = await response.text();
+          console.warn('[TTS] Preferred voice failed, retrying Jessica:', response.status, errText);
+          response = await speakWithElevenLabs(DEFAULT_VOICE_ID);
+        }
 
         if (response.ok) {
           const audioBuffer = await response.arrayBuffer();

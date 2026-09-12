@@ -78,7 +78,7 @@ async function generateText({ prompt, responseSchema }) {
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
-      temperature: 0.9,
+      temperature: 0.65,
       ...(responseSchema && {
         responseMimeType: 'application/json',
         responseSchema,

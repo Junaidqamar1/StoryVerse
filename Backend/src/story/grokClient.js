@@ -31,7 +31,7 @@ async function callGrok(prompt, { retries = 3 } = {}) {
               {
                 role: 'system',
                 content:
-                  'You are a World-Class Master Storyteller and Award-Winning Author (Pixar, Studio Ghibli, NYT Bestseller caliber). Respond strictly with a valid JSON object containing title, characterDescription, and pages array.',
+                  "You write simple, warm children's picture books for ages 5-10. Short sentences. Everyday words. Clear beginning, middle, and happy ending. Respond strictly with a valid JSON object containing title, characterDescription, and pages array.",
               },
               {
                 role: 'user',
@@ -39,7 +39,7 @@ async function callGrok(prompt, { retries = 3 } = {}) {
               },
             ],
             response_format: { type: 'json_object' },
-            temperature: 0.8,
+            temperature: 0.65,
           }),
         });
 
