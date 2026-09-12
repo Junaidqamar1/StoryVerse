@@ -7,10 +7,9 @@ module.exports = {
   databaseUrl: process.env.DATABASE_URL,
   frontendOrigin: process.env.FRONTEND_ORIGIN || '*',
 
-  // Story text generation (Gemini). Not validated here at startup on
-  // purpose - so the server still boots and auth works even before these
-  // are set. The story-generation code itself throws a clear error if
-  // these are missing at the moment /books/generate is actually called.
+  // Story text generation (xAI Grok / Gemini)
+  grokApiKey: process.env.GROK_API_KEY || process.env.XAI_API_KEY,
+  grokModel: process.env.GROK_MODEL || 'grok-2-latest',
   geminiApiKey: process.env.GEMINI_API_KEY,
   textModel: process.env.TEXT_MODEL || 'gemini-3.6-flash',
 

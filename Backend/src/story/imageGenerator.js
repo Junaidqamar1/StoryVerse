@@ -234,10 +234,19 @@ async function generateSinglePageImage(page, characterDescription, style, bookTi
  */
 async function illustrateBook(pages, characterDescription, bookTitle, styleKey) {
   const style = resolveStyle(styleKey);
+  const results = [];
 
-  const results = await mapWithConcurrency(pages, config.imageConcurrency, (page) =>
-    generateSinglePageImage(page, characterDescription, style, bookTitle)
-  );
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i];
+    console.log(`[illustrateBook] Generating AI image for page ${i + 1} of ${pages.length}...`);
+    const illustrated = await generateSinglePageImage(page, characterDescription, style, bookTitle);
+    results.push(illustrated);
+
+    // Rate-limit buffer pause between pages to ensure 100% of Cloudflare AI image calls succeed
+    if (i < pages.length - 1) {
+      await new Promise((r) => setTimeout(r, 600));
+    }
+  }
 
   return results;
 }

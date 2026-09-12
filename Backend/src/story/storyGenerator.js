@@ -1,4 +1,5 @@
-﻿const { generateText } = require('./geminiClient');
+const { callGrok } = require('./grokClient');
+const { generateText: callGemini } = require('./geminiClient');
 
 // Forces Gemini to return exactly this shape - no parsing guesswork.
 const STORY_SCHEMA = {
@@ -181,9 +182,23 @@ function generateCreativeFallbackStory(userIdea, pageCount = 4, language = 'Engl
  * Returns { title, characterDescription, pages: [{pageNumber, text, imagePrompt}] }
  */
 async function generateStory(userIdea, pageCount, language = 'English') {
+  const prompt = buildPrompt(userIdea, pageCount, language);
+
+  // 1. Try xAI Grok API if GROK_API_KEY / XAI_API_KEY is present
   try {
-    const prompt = buildPrompt(userIdea, pageCount, language);
-    const raw = await generateText({ prompt, responseSchema: STORY_SCHEMA });
+    const rawGrok = await callGrok(prompt);
+    const story = typeof rawGrok === 'string' ? JSON.parse(rawGrok) : rawGrok;
+    if (story && Array.isArray(story.pages) && story.pages.length > 0) {
+      console.log(`[storyGenerator] Grok AI generated story in ${language}: "${story.title}" (${story.pages.length} pages)`);
+      return story;
+    }
+  } catch (grokErr) {
+    console.warn(`[storyGenerator] Grok API unavailable (${grokErr.message}). Trying Gemini...`);
+  }
+
+  // 2. Try Gemini API
+  try {
+    const raw = await callGemini({ prompt, responseSchema: STORY_SCHEMA });
     const story = JSON.parse(raw);
 
     if (Array.isArray(story.pages) && story.pages.length > 0) {
@@ -194,6 +209,7 @@ async function generateStory(userIdea, pageCount, language = 'English') {
     console.warn(`[storyGenerator] Gemini API unavailable (${err.message}). Using Creative Story Engine fallback for ${language}.`);
   }
 
+  // 3. Creative Multilingual Story Engine fallback
   return generateCreativeFallbackStory(userIdea, pageCount, language);
 }
 

@@ -9,7 +9,7 @@ function endpointUrl() {
   return `https://api.cloudflare.com/client/v4/accounts/${config.cloudflareAccountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
 }
 
-async function callCloudflare(body, { retries = 3 } = {}) {
+async function callCloudflare(body, { retries = 4 } = {}) {
   if (!config.cloudflareAccountId || !config.cloudflareApiToken) {
     throw new Error(
       'CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN are not set. See README for setup steps and add them to .env'
@@ -17,38 +17,41 @@ async function callCloudflare(body, { retries = 3 } = {}) {
   }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(endpointUrl(), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.cloudflareApiToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch(endpointUrl(), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.cloudflareApiToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
 
-const data = await res.json();
+      const data = await res.json();
 
-console.log("Cloudflare status:", res.status);
-console.log("Cloudflare response:", JSON.stringify(data, null, 2));
+      if (res.ok && data.success && data.result?.image) {
+        console.log('[Cloudflare AI] Image successfully generated!');
+        return data.result.image;
+      }
 
-if (res.ok && data.success && data.result?.image) {
-  console.log("Image received from Cloudflare");
-  return data.result.image;
-}
+      const isRetryable = res.status === 429 || res.status >= 500;
+      if (isRetryable && attempt < retries) {
+        const waitMs = 2000 * Math.pow(1.5, attempt);
+        console.warn(`[Cloudflare AI] Status ${res.status}, retrying in ${Math.round(waitMs)}ms (attempt ${attempt + 1}/${retries})...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
 
-if (res.status === 429) {
-  throw new Error(`Cloudflare AI quota exhausted (429): ${JSON.stringify(data.errors || data)}`);
-}
-
-const isRetryable = res.status >= 500;
-if (isRetryable && attempt < retries) {
-  const waitMs = 1500 * Math.pow(2, attempt);
-  console.warn(`  Cloudflare AI error, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
-  await new Promise((r) => setTimeout(r, waitMs));
-  continue;
-}
-
-throw new Error(`Cloudflare Workers AI error (${res.status}): ${JSON.stringify(data.errors || data)}`);
+      throw new Error(`Cloudflare Workers AI error (${res.status}): ${JSON.stringify(data.errors || data)}`);
+    } catch (err) {
+      if (attempt < retries && (err.message.includes('fetch failed') || err.message.includes('429') || err.message.includes('500'))) {
+        const waitMs = 2000 * Math.pow(1.5, attempt);
+        console.warn(`[Cloudflare AI] Fetch error, retrying in ${Math.round(waitMs)}ms...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
   }
 }
 
